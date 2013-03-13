@@ -148,9 +148,9 @@ newcmd2:
 
 		ch = *p;
 		*p = 0;
-
+/*
 		printf("parseword:\nword: '%s'\nend char:'%c'\nline left '%s'\n", word, ch, p + 1);
-		
+*/	
 
 		if (word != NULL) {
 			*narg++ = word;
@@ -171,25 +171,81 @@ nextch:
 		 * p points at the following character of line
 		 
 		 */
+		 
+		/* use a command scheduler? -> parse whole line
+		 * and then execute all commands rather than executing
+		 * commands while parsing.
+		 */
 		
 		switch (ch) {
 		case ' ':
 		case '\t': break;
 		case '>':
-			warn('Ah, we have redirection!');
+			printf("Ah, we have redirection!\n");
+			/*
+			 * RUN_COMMAND() and store ouput in a file;
+			 */
 			break;
 		case ';':
+			printf("End of command, running instruction\n");
+			/*RUN_COMMAND()*/
 			break;
 		case '&':
+			p++;
+			ch2 = *p;
+			switch (ch2) {
+				case '&':
+					printf("&& instruction. If run first fail, don't run second and return fail.\n");
+					/*
+					 * if (RUN_COMMAND(first)) {
+					 * 		RUN_COMMAND(second);
+					 * } else {
+					 *		Not run next command and return an error;
+					 * }
+					 */
+					break;
+				default:
+					printf("running instruction in background\n");
+					/*
+					 * RUN_COMMAND() in subshell
+					 */
+					break;
+			}
 			break;
 		case '|' :
+			p++;
+			ch2 = *p;
+			switch (ch2) {
+				case '|':
+					printf("|| instruction. if run first succeed, don't run second and return success.\n");
+					/*
+					 * if (RUN_COMMAND(first)) {
+					 * 		don't run next command and return success;
+					 * } else {
+					 *		RUN_COMMAND(second);
+					 */
+					break;
+				default:
+					printf("Pipe between first and second\n");
+					/*
+					 * RUN_COMMAND(first);
+					 * RUN_COMMAND(second with output from first);
+					 */
+					break;
+			}
 			break;
 		case '<':
+			printf("Using a file as input for command\n");
+			/*
+			 * RUN_COMMAND(instr with file as input);
+			 */
 			break;
 		case '\n':
+			printf("End of line, running command.\n");
 			/*RUN_COMMAND();*/
 			break;
 		default:
+			break;
 		}
 
 		/*
