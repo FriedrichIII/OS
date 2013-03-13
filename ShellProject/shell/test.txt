@@ -1,0 +1,1 @@
+case ' ': case '\t': break; case '>': case ';': case '&': case '|' : case '<': case '\n':
