@@ -50,6 +50,7 @@ builtin_cd(int argc, char **argv)
 				printf ("%s is not a directory.\n", argv[1]);
 				break;
 			default:
+				perror("Error ");
 				break;
 		}
 	}
