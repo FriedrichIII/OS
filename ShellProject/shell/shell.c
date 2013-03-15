@@ -36,20 +36,24 @@ builtin_cd(int argc, char **argv)
 	if (argc == 1 && strcmp(argv[0], "cd") == 0) {
 		status = chdir(getenv("HOME"));
 	} else if (argc == 2) {
-		status = chdir(argv[1]);  
-		if (errno == ENOTDIR) {  
-			printf ("%s n'est pas un répertoire !\n", argv[1]);
-		}
+		status = chdir(argv[1]);
 	} else {
 		
 	}
 	
-	/*int i;
-	printf("%d", argc);
-	printf("arglist:\n");
-	for (i=0; argv[i]!=NULL; i++){
-		printf("%d) %s\n", (i+1), argv[i]);
-	}*/
+	if (status != 0) {
+		switch(errno) {
+			case ENOENT:
+				printf ("%s does not exist.\n", argv[1]);
+				break;
+			case ENOTDIR:
+				printf ("%s is not a directory.\n", argv[1]);
+				break;
+			default:
+				break;
+		}
+	}
+
 	return (0);
 }
 
