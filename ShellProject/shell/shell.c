@@ -25,10 +25,7 @@ struct builtin {
 
 
 int
-builtin_cd(int argc, char **argv)
-{
-	/* body of cd builtin command */
-	/* add your code here */
+builtin_cd(int argc, char **argv) {
 	printf("running cd\n");
 	
 	int status;
@@ -44,45 +41,32 @@ builtin_cd(int argc, char **argv)
 	if (status != 0) {
 		switch(errno) {
 			case ENOENT:
-				printf ("%s does not exist.\n", argv[1]);
+				fprintf (stderr, "%s does not exist.\n", argv[1]);
 				break;
 			case ENOTDIR:
-				printf ("%s is not a directory.\n", argv[1]);
+				fprintf (stderr, "%s is not a directory.\n", argv[1]);
 				break;
 			default:
 				perror("Error ");
 				break;
 		}
+		return(1);
 	}
 
 	return (0);
 }
 
-int
-builtin_exit(int argc, char **argv)
-{
-	/* body of exit builtin command */
-	/* add your code here */
-	printf("running exit\n");
-	int i;
-	printf("arglist:\n");
-	for (i=0; argv[i]!=NULL; i++){
-		printf("%d) %s\n", (i+1), argv[i]);
-	}
-	return (0);
+int builtin_exit(int argc, char **argv) {
+	exit(EXIT_SUCCESS);
 }
 
-int
-builtin_status(int argc, char **argv)
-{
-	/* body of the status builtin command */
-	/* add your code here */
-	printf("running status\n");
-	int i;
+int builtin_status(int argc, char **argv) {
+	printf("Status of the last command executed : %d\n", error);
+	/*int i;
 	printf("arglist:\n");
 	for (i=0; argv[i]!=NULL; i++){
 		printf("%d) %s\n", (i+1), argv[i]);
-	}
+	}*/
 	return (0);
 }
 
