@@ -10,7 +10,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <ctype.h>
-
+#include "str_replace.h"
 
 static int error;
 static int inout[2];
@@ -33,9 +33,15 @@ builtin_cd(int argc, char **argv) {
 	if (argc == 1 && strcmp(argv[0], "cd") == 0) {
 		status = chdir(getenv("HOME"));
 	} else if (argc == 2) {
-		status = chdir(argv[1]);
-	} else {
-		
+		if(strchr(argv[1], '~')) {
+			printf("true\n");
+			char* rep = str_replace(argv[1], "~", getenv("HOME"));
+			status = chdir(rep);
+			free(rep);
+			rep = NULL;
+		} else {
+			status = chdir(argv[1]);
+		}
 	}
 	
 	if (status != 0) {
