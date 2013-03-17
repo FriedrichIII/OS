@@ -34,11 +34,13 @@ builtin_cd(int argc, char **argv) {
 		status = chdir(getenv("HOME"));
 	} else if (argc == 2) {
 		if(strchr(argv[1], '~')) {
+			/*
 			printf("true\n");
 			char* rep = str_replace(argv[1], "~", getenv("HOME"));
 			status = chdir(rep);
 			free(rep);
 			rep = NULL;
+			*/
 		} else {
 			status = chdir(argv[1]);
 		}
@@ -110,6 +112,25 @@ run_builtin(char **args)
 }
 
 /* add your code here */
+void
+printCwd() {
+	char cwd[MAXPATHLEN+1];
+	getcwd(cwd, sizeof(cwd));
+	printf("%s %% ", cwd);
+}
+
+/* Ctrl-C handler */
+void
+intHandler(int signalNo)
+{
+
+	if (signalNo == SIGINT){
+		printf("Ctrl-C recieved, interrupt child process\n");
+		printCwd();
+	}
+}
+
+
 
 /*
  * Takes a pointer to a string pointer and advances this string pointer
@@ -276,13 +297,17 @@ nextch:
 int
 main(void)
 {
-	char cwd[MAXPATHLEN+1];
+	/* setting signal handler to the kernel */
+	if (signal(SIGINT, intHandler) == SIG_ERR) {
+		printf("Error while setting Ctrl-C handler\n");
+	}
+
+
 	char line[1000];
 	char *res;
 
 	for (;;) {
-		getcwd(cwd, sizeof(cwd));
-		printf("%s %% ", cwd);
+		printCwd();
 
 		res = fgets(line, sizeof(line), stdin);
 		if (res == NULL)
