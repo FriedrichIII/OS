@@ -135,16 +135,6 @@ printCwd() {
 	printf("%s %% ", cwd);
 }
 
-/* Ctrl-C handler */
-void
-intHandler(int signalNo)
-{
-// TODO replace with SIG_IGN
-	if (signalNo == SIGINT){
-		printf("Ctrl-C recieved, interrupt child process\n");
-	}
-}
-
 void
 jobLauncher(job* jobs)
 {
@@ -412,7 +402,7 @@ int
 main(void)
 {
 	/* setting signal handler to the kernel */
-	if (signal(SIGINT, intHandler) == SIG_ERR) {
+	if (signal(SIGINT, SIG_IGN) == SIG_ERR) {
 		printf("Error while setting Ctrl-C handler\n");
 	}
 
