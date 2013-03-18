@@ -128,6 +128,10 @@ run_builtin(char **args)
 /* add your code here */
 //FIXME
 //Exec buildout functions
+run_exec(char ** args){
+	execv(*args, args);
+}
+
 
 
 void
@@ -150,35 +154,84 @@ intHandler(int signalNo)
 void
 jobLauncher(job* jobs)
 {
+	job* tmpJob=jobs;
+	pid_t childPid;
+	int status;
 
-	for(;job;job=jobs->next){
+	for(;tmpJob;tmpJob=jobs->next){
 
+		// Test for conditions on previous commands !!! error==0 if no error...
+		if(tmpJob->condition  == AND && error){
+			return;
+		}else if(tmpJob->condition == OR && !error){
+			return;
+		}
 
+		if(tmpJob->background){
+			printf("We are in background mode! O_o\n");
+			if((childPid=fork()) < 0 ){
+				printf("JobLauncher failed miserably to fork process O_o\n");
+				exit(1);
 
+			}else if(childPid== 0){
+				// Code only executed by the child
 
-		if (run_builtin(job->)) printf("builtin executed!\n");
+				dup2(tmpJob->in, STDIN_FILENO);
+				dup2(tmpJob->out, STDOUT_FILENO);
 
-		else if(run_exec(job)) printf("shell function executed!\n") ;
+				if (run_builtin(tmpJob->cmd)){
+
+					printf("builtin executed!\n");
+					error=0;
+
+				}else{
+					if(execv(*(tmpJob->cmd), tmpJob->cmd)){
+						printf("shell function executed!\n");
+						error=0;
+					}else{
+						printf("shell function failed!\n");
+					}
+				}
 
 			}else{
-
-				return;
+				// Code only executed by parent process
+				//no wait, its in the background!!!
 			}
+		}else{
+			dup2(tmpJob->in, STDIN_FILENO);
+			dup2(tmpJob->out, STDOUT_FILENO);
+
+			if (run_builtin(tmpJob->cmd)){
+
+				printf("builtin executed!\n");
+
+			}else{
+				if((childPid=fork()) < 0 ){
+						printf("JobLauncher failed miserably to fork process O_o\n");
+						exit(1);
+
+				}else if(childPid== 0){
+					// Code only executed by the child
+					//change the handler of the interrup signal
+					signal(SIGINT, SIG_DFL);
+
+					if(execv(*(tmpJob->cmd), tmpJob->cmd)){
+						printf("shell function executed!\n");
+						error=0;
+					}else{
+						printf("shell function failed!\n");
+					}
+
+				}else{
+					// Code only executed by parent process
+					waitpid(-1, &childPid, 0 );
+				}
+			}
+
+		}
 	}
 
 }
-
-int executeForkForeGround(char cmd, char **argv){
-	pid_t pid;
-	int status;
-
-
-}
-
-void executeForkBackGround(){
-
-}
-
 
 /*
  * Takes a pointer to a string pointer and advances this string pointer
