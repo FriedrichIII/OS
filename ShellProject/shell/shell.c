@@ -355,6 +355,7 @@ process(char *line)
 					break;
 				default:
 					printf("Pipe between first and second\n");
+					// TODO check in other case if creating a valid empty job
 					storeParsed(&currentJob, parsingCommand, inRedirection);
 					if (pipe(pip) != 0) {
 						fprintf(stderr, "pipe error, commands will be executed independently.\n");
