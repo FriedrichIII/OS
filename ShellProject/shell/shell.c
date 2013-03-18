@@ -112,6 +112,13 @@ run_builtin(char **args)
 }
 
 /* add your code here */
+//FIXME
+//Exec buildout functions
+
+
+
+
+
 void
 printCwd() {
 	char cwd[MAXPATHLEN+1];
@@ -202,12 +209,7 @@ nextch:
 		 * p points at the following character of line
 		 
 		 */
-		 
-		/* use a command scheduler? -> parse whole line
-		 * and then execute all commands rather than executing
-		 * commands while parsing.
-		 */
-		
+
 		switch (ch) {
 		case ' ':
 		case '\t': break;
@@ -216,6 +218,7 @@ nextch:
 			/*
 			 * RUN_COMMAND() and store ouput in a file;
 			 */
+
 			break;
 		case ';':
 			printf("End of command, running instruction\n");
@@ -262,6 +265,9 @@ nextch:
 					 * RUN_COMMAND(first);
 					 * RUN_COMMAND(second with output from first);
 					 */
+
+
+
 					break;
 			}
 			break;
