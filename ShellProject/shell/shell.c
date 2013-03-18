@@ -361,7 +361,7 @@ process(char *line)
 						currentJob->out = pip[1];
 						currentJob->next = newJob();
 						currentJob = currentJob->next;
-						currentJob->in = pip[2];
+						currentJob->in = pip[0];
 					}
 					parsingCommand = 1;
 					harg = narg;
