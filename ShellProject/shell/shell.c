@@ -126,7 +126,6 @@ intHandler(int signalNo)
 
 	if (signalNo == SIGINT){
 		printf("Ctrl-C recieved, interrupt child process\n");
-		printCwd();
 	}
 }
 
