@@ -129,9 +129,6 @@ run_builtin(char **args)
 //Exec buildout functions
 
 
-
-
-
 void
 printCwd() {
 	char cwd[MAXPATHLEN+1];
@@ -152,10 +149,34 @@ intHandler(int signalNo)
 void
 jobLauncher(job* jobs)
 {
-	if (run_builtin()) return;
+
+	for(;job;job=jobs->next){
+
+
+
+
+		if (run_builtin(job->)) printf("builtin executed!\n");
+
+		else if(run_exec(job)) printf("shell function executed!\n") ;
+
+			}else{
+
+				return;
+			}
+	}
 
 }
 
+int executeForkForeGround(char cmd, char **argv){
+	pid_t pid;
+	int status;
+
+
+}
+
+void executeForkBackGround(){
+
+}
 
 
 /*
