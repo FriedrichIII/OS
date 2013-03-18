@@ -138,15 +138,6 @@ printCwd() {
 	printf("%s %% ", cwd);
 }
 
-void
-<<<<<<< HEAD
-=======
-jobLauncher(job* jobs)
-{
-	if (run_builtin()) return;
-
-}
-
 job * newJob(void) {
 	job* nJob;
 
@@ -164,7 +155,6 @@ job * newJob(void) {
 }
 
 void
->>>>>>> 5276335e775322f86e67c53caaaa7d26d7f208a8
 storeParsed(job **currentJob, int parsingCommand, int inRedirection, char **parsed )
 {
 	if (!(*currentJob)) *currentJob = newJob();
@@ -207,12 +197,12 @@ jobLauncher(job* jobs)
 {
 	job* tmpJob=jobs;
 	pid_t childPid;
-	int status;
 
 	for(;tmpJob;tmpJob=jobs->next){
 
 		// Test for conditions on previous commands !!! error==0 if no error...
 		if(tmpJob->condition  == AND && error){
+
 			return;
 		}else if(tmpJob->condition == OR && !error){
 			return;
