@@ -25,6 +25,7 @@ typedef struct job_s{
 	int out;
 	int background;
 	cond condition;
+	struct job_s *next;
 } job;
 
 struct builtin {
@@ -181,18 +182,27 @@ process(char *line)
 	int ch, ch2;
 	char *p, *word;
 	char *args[100], **narg;
+	job *currentJob;
 	int pip[2];
-	int fd, mode;
+	int parsingCommand;
+	int *jobFlux;
 
 	p = line;
 
-newcmd:
-	inout[0] = STDIN_FILENO;
-	inout[1] = STDOUT_FILENO;
-
-newcmd2:
 	narg = args;
 	*narg = NULL;
+
+	/*initialises new job list*/
+	if(!(currentJob = malloc(job))) {
+		fprintf(stderr, "Memory error, exiting.");
+		exit(1);
+	}
+	currentJob->condition=NONE;
+	currentJob->next=NULL;
+
+	/*"remebers" if parse a redirection or a command*/
+	parsingCommand=1;
+	*jobFlux = NULL;
 
 	for (; *p != 0; p != line && p++) {
 		word = parseword(&p);
@@ -208,7 +218,6 @@ newcmd2:
 			*narg = NULL;
 		}
 
-nextch:
 		/*
 		 * Here you should put your code for processing the commands
 		 * Up to this point, pointer word points to the next word,
@@ -232,7 +241,10 @@ nextch:
 		case ' ':
 		case '\t': break;
 		case '>':
+
+
 			printf("Ah, we have redirection!\n");
+
 			/*
 			 * RUN_COMMAND() and store ouput in a file;
 			 */
