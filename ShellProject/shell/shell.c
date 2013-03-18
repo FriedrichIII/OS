@@ -14,7 +14,6 @@
 #include <fcntl.h>
 
 static int error;
-static int inout[2];
 
 typedef int (*builtin_cmd)(int, char **);
 
@@ -140,9 +139,35 @@ printCwd() {
 }
 
 void
+<<<<<<< HEAD
+=======
+jobLauncher(job* jobs)
+{
+	if (run_builtin()) return;
+
+}
+
+job * newJob(void) {
+	job* nJob;
+
+	if(!(nJob = malloc(sizeof(job)))) {
+		fprintf(stderr, "Memory error, exiting.\n");
+		exit(1);
+	}
+	nJob->condition=NONE;
+	nJob->next=NULL;
+	nJob->in = STDIN_FILENO;
+	nJob->out = STDOUT_FILENO;
+	nJob->valid = 1;
+
+	return nJob;
+}
+
+void
+>>>>>>> 5276335e775322f86e67c53caaaa7d26d7f208a8
 storeParsed(job **currentJob, int parsingCommand, int inRedirection, char **parsed )
 {
-	if (!*currentJob) *currentJob = newJob;
+	if (!(*currentJob)) *currentJob = newJob();
 
 	job *localJob = *currentJob;
 
@@ -160,7 +185,7 @@ storeParsed(job **currentJob, int parsingCommand, int inRedirection, char **pars
 			}
 		} else {
 			localJob->out = open(parsed[0], O_WRONLY|O_CREAT, 666);
-			if (localJob->in < 0) {
+			if (localJob->out < 0) {
 				fprintf(stderr, "%s: Unable to open or create\n", parsed[0]);
 			} else {
 				success = 1;
@@ -171,21 +196,6 @@ storeParsed(job **currentJob, int parsingCommand, int inRedirection, char **pars
 	localJob->valid &= success;
 }
 
-job * newJob(void) {
-	job* newJob;
-	
-	if(!(newJob = malloc(job))) {
-		fprintf(stderr, "Memory error, exiting.\n");
-		exit(1);
-	}
-	newJob->condition=NONE;
-	newJob->next=NULL;
-	newJob->in = STDIN_FILENO;
-	newJob->out = STDOUT_FILENO;
-	newJob->valid = 1;
-
-	return newJob;
-}
 
 job * freeJob(job *oldJob) {
 	free(oldJob);
@@ -304,7 +314,7 @@ process(char *line)
 {
 	int ch, ch2;
 	char *p, *word;
-	char *args[100], **narg;
+	char *args[100], **narg, **harg;
 	job *currentJob, *jobs;
 	int pip[2];
 	int parsingCommand;
@@ -312,6 +322,7 @@ process(char *line)
 
 	p = line;
 
+	harg = args;
 	narg = args;
 	*narg = NULL;
 
@@ -357,9 +368,11 @@ process(char *line)
 		case '\t': break;
 		case '>':
 			printf("Ah, we have redirection!\n");
-			storeParsed(&currentJob, parsingCommand, inRedirection);
+			storeParsed(&currentJob, parsingCommand, inRedirection, harg);
 			parsingCommand = 0;
 			inRedirection = 0;
+			harg=narg;
+
 			/*
 			 * RUN_COMMAND() and store ouput in a file;
 			 */
@@ -368,9 +381,10 @@ process(char *line)
 		case ';':
 
 			printf("End of command, running instruction\n");
-			storeParsed(&currentJob, parsingCommand, inRedirection);
+			storeParsed(&currentJob, parsingCommand, inRedirection, harg);
 			currentJob = currentJob->next;
 			parsingCommand = 1;
+			harg = narg;
 			/*RUN_COMMAND()*/
 			break;
 		case '&':
@@ -379,10 +393,11 @@ process(char *line)
 			switch (ch2) {
 				case '&':
 					printf("&& instruction. If run first fail, don't run second and return fail.\n");
-					storeParsed(&currentJob, parsingCommand, inRedirection);
+					storeParsed(&currentJob, parsingCommand, inRedirection, harg);
 					currentJob->condition = AND;
 					currentJob = currentJob->next;
 					parsingCommand = 1;
+					harg = narg;
 					/*
 					 * if (RUN_COMMAND(first)) {
 					 * 		RUN_COMMAND(second);
@@ -393,9 +408,10 @@ process(char *line)
 					break;
 				default:
 					printf("running instruction in background\n");
-					storeParsed(&currentJob, parsingCommand, inRedirection);
+					storeParsed(&currentJob, parsingCommand, inRedirection, harg);
 					currentJob->background = 1;
 					parsingCommand = 1;
+					harg = narg;
 					/*
 					 * RUN_COMMAND() in subshell
 					 */
@@ -408,8 +424,9 @@ process(char *line)
 			switch (ch2) {
 				case '|':
 					printf("|| instruction. if run first succeed, don't run second and return success.\n");
-					storeParsed(&currentJob, parsingCommand, inRedirection);
+					storeParsed(&currentJob, parsingCommand, inRedirection, harg);
 					currentJob->condition = OR;
+					harg = narg;
 					/*
 					 * if (RUN_COMMAND(first)) {
 					 * 		don't run next command and return success;
@@ -420,15 +437,18 @@ process(char *line)
 				default:
 					printf("Pipe between first and second\n");
 					// TODO check in other case if creating a valid empty job
-					storeParsed(&currentJob, parsingCommand, inRedirection);
+					storeParsed(&currentJob, parsingCommand, inRedirection, harg);
 					if (pipe(pip) != 0) {
 						fprintf(stderr, "pipe error, commands will be executed independently.\n");
+						currentJob = currentJob->next;
 					} else {
 						currentJob->out = pip[1];
 						currentJob->next = newJob();
 						currentJob = currentJob->next;
-						currentJob->in = pip[2];
+						currentJob->in = pip[0];
 					}
+					parsingCommand = 1;
+					harg = narg;
 					/*
 					 * RUN_COMMAND(first);
 					 * RUN_COMMAND(second with output from first);
@@ -441,22 +461,24 @@ process(char *line)
 			break;
 		case '<':
 			printf("Using a file as input for command\n");
-			storeParsed(&currentJob, parsingCommand, inRedirection);
+			storeParsed(&currentJob, parsingCommand, inRedirection, harg);
 			parsingCommand = 0;
 			inRedirection = 1;
+			harg = narg;
 			/*
 			 * RUN_COMMAND(instr with file as input);
 			 */
 			break;
 		case '\n':
 			printf("End of line, running command.\n");
-			storeParsed(&currentJob, parsingCommand, inRedirection);
+			storeParsed(&currentJob, parsingCommand, inRedirection, harg);
 			parsingCommand = 1;
+			harg = narg;
 			/*RUN_COMMAND();*/
 			break;
 		default:
 			fprintf(stderr, "internal unexpected error, exiting\n");
-			exit();
+			exit(1);
 			break;
 		}
 
