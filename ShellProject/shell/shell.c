@@ -17,12 +17,24 @@ static int inout[2];
 
 typedef int (*builtin_cmd)(int, char **);
 
+typedef int cond;
+
+typedef struct job_s{
+	char **cmd;
+	int stdin;
+	int stdout;
+	int background;
+	cond condition;
+} job;
+
 struct builtin {
 	const char *name;
 	builtin_cmd func;
 };
 #define	BIN(n)	{ #n, builtin_ ## n }
-
+#define NONE 0
+#define AND 1
+#define OR 2
 
 int
 builtin_cd(int argc, char **argv) {
