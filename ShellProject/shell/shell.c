@@ -21,8 +21,8 @@ typedef int cond;
 
 typedef struct job_s{
 	char **cmd;
-	int stdin;
-	int stdout;
+	int in;
+	int out;
 	int background;
 	cond condition;
 } job;
@@ -43,7 +43,8 @@ builtin_cd(int argc, char **argv) {
 	int status;
 	
 	if (argc == 1 && strcmp(argv[0], "cd") == 0) {
-		status = chdir(getenv("HOME"));
+		fprintf(stderr, "Not enough argument for command cd.");
+		status = 1;
 	} else if (argc == 2) {
 		if(strchr(argv[1], '~')) {
 			/*
@@ -135,10 +136,17 @@ printCwd() {
 void
 intHandler(int signalNo)
 {
-
+// TODO replace with SIG_IGN
 	if (signalNo == SIGINT){
 		printf("Ctrl-C recieved, interrupt child process\n");
 	}
+}
+
+void
+jobLauncher(job* jobs)
+{
+	if (run_builtin()) return;
+
 }
 
 
