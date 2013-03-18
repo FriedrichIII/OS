@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #include "str_replace.h"
+#include <fcntl.h>
 
 static int error;
 static int inout[2];
@@ -25,6 +26,7 @@ typedef struct job_s{
 	int out;
 	int background;
 	cond condition;
+	int valid;
 	struct job_s *next;
 } job;
 
@@ -150,6 +152,59 @@ jobLauncher(job* jobs)
 
 }
 
+void
+storeParsed(job **currentJob, int parsingCommand, int inRedirection, char **parsed )
+{
+	if (!*currentJob) *currentJob = newJob;
+
+	job *localJob = *currentJob;
+
+	int success = 0;
+	if (parsed && parsed[0]) {
+		if (parsingCommand) {
+			localJob->cmd = parsed;
+			success = 1;
+		} else if (inRedirection) {
+			localJob->in = open(parsed[0], O_RDONLY);
+			if (localJob->in < 0) {
+				fprintf(stderr, "%s: No such file or directory\n", parsed[0]);
+			} else {
+				success = 1;
+			}
+		} else {
+			localJob->out = open(parsed[0], O_WRONLY|O_CREAT, 666);
+			if (localJob->in < 0) {
+				fprintf(stderr, "%s: Unable to open or create\n", parsed[0]);
+			} else {
+				success = 1;
+			}
+		}
+	}
+
+	localJob->valid &= success;
+}
+
+job * newJob(void) {
+	job* newJob;
+	
+	if(!(newJob = malloc(job))) {
+		fprintf(stderr, "Memory error, exiting.\n");
+		exit(1);
+	}
+	newJob->condition=NONE;
+	newJob->next=NULL;
+	newJob->in = STDIN_FILENO;
+	newJob->out = STDOUT_FILENO;
+	newJob->valid = 1;
+
+	return newJob;
+}
+
+job * freeJob(job *oldJob) {
+	free(oldJob);
+	return NULL;
+}
+
 
 
 /*
@@ -182,10 +237,10 @@ process(char *line)
 	int ch, ch2;
 	char *p, *word;
 	char *args[100], **narg;
-	job *currentJob;
+	job *currentJob, *jobs;
 	int pip[2];
 	int parsingCommand;
-	int *jobFlux;
+	int inRedirection;
 
 	p = line;
 
@@ -193,16 +248,13 @@ process(char *line)
 	*narg = NULL;
 
 	/*initialises new job list*/
-	if(!(currentJob = malloc(job))) {
-		fprintf(stderr, "Memory error, exiting.");
-		exit(1);
-	}
-	currentJob->condition=NONE;
-	currentJob->next=NULL;
+	currentJob = NULL;
+
+	jobs = currentJob;
 
 	/*"remebers" if parse a redirection or a command*/
 	parsingCommand=1;
-	*jobFlux = NULL;
+	inRedirection = 0;
 
 	for (; *p != 0; p != line && p++) {
 		word = parseword(&p);
@@ -241,16 +293,20 @@ process(char *line)
 		case ' ':
 		case '\t': break;
 		case '>':
-
-
 			printf("Ah, we have redirection!\n");
-
+			storeParsed(&currentJob, parsingCommand, inRedirection);
+			parsingCommand = 0;
+			inRedirection = 0;
 			/*
 			 * RUN_COMMAND() and store ouput in a file;
 			 */
 			break;
 		case ';':
+
 			printf("End of command, running instruction\n");
+			storeParsed(&currentJob, parsingCommand, inRedirection);
+			currentJob = currentJob->next;
+			parsingCommand = 1;
 			/*RUN_COMMAND()*/
 			break;
 		case '&':
@@ -259,6 +315,10 @@ process(char *line)
 			switch (ch2) {
 				case '&':
 					printf("&& instruction. If run first fail, don't run second and return fail.\n");
+					storeParsed(&currentJob, parsingCommand, inRedirection);
+					currentJob->condition = AND;
+					currentJob = currentJob->next;
+					parsingCommand = 1;
 					/*
 					 * if (RUN_COMMAND(first)) {
 					 * 		RUN_COMMAND(second);
@@ -269,6 +329,9 @@ process(char *line)
 					break;
 				default:
 					printf("running instruction in background\n");
+					storeParsed(&currentJob, parsingCommand, inRedirection);
+					currentJob->background = 1;
+					parsingCommand = 1;
 					/*
 					 * RUN_COMMAND() in subshell
 					 */
@@ -281,6 +344,8 @@ process(char *line)
 			switch (ch2) {
 				case '|':
 					printf("|| instruction. if run first succeed, don't run second and return success.\n");
+					storeParsed(&currentJob, parsingCommand, inRedirection);
+					currentJob->condition = OR;
 					/*
 					 * if (RUN_COMMAND(first)) {
 					 * 		don't run next command and return success;
@@ -290,6 +355,15 @@ process(char *line)
 					break;
 				default:
 					printf("Pipe between first and second\n");
+					storeParsed(&currentJob, parsingCommand, inRedirection);
+					if (pipe(pip) != 0) {
+						fprintf(stderr, "pipe error, commands will be executed independently.\n");
+					} else {
+						currentJob->out = pip[1];
+						currentJob->next = newJob();
+						currentJob = currentJob->next;
+						currentJob->in = pip[2];
+					}
 					/*
 					 * RUN_COMMAND(first);
 					 * RUN_COMMAND(second with output from first);
@@ -299,15 +373,22 @@ process(char *line)
 			break;
 		case '<':
 			printf("Using a file as input for command\n");
+			storeParsed(&currentJob, parsingCommand, inRedirection);
+			parsingCommand = 0;
+			inRedirection = 1;
 			/*
 			 * RUN_COMMAND(instr with file as input);
 			 */
 			break;
 		case '\n':
 			printf("End of line, running command.\n");
+			storeParsed(&currentJob, parsingCommand, inRedirection);
+			parsingCommand = 1;
 			/*RUN_COMMAND();*/
 			break;
 		default:
+			fprintf(stderr, "internal unexpected error, exiting\n");
+			exit();
 			break;
 		}
 
@@ -320,9 +401,10 @@ process(char *line)
 
 		/* add your code here */
 		;
-	}
+	} // end for
 
-	run_builtin(args);
+	// launchJobs(jobs)
+	jobLauncher(jobs);
 }
 
 int
