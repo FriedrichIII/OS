@@ -245,7 +245,7 @@ jobLauncher(job* jobs)
 					error=0;
 
 				}else{
-					if(execv(*(tmpJob->cmd), tmpJob->cmd)){
+					if(execvp(*(tmpJob->cmd), tmpJob->cmd)){
 						printf("shell function executed!\n");
 						error=0;
 
@@ -280,7 +280,7 @@ jobLauncher(job* jobs)
 					//change the handler of the interrup signal
 					signal(SIGINT, SIG_DFL);
 
-					if(execv(*(tmpJob->cmd), tmpJob->cmd)){
+					if(execvp(*(tmpJob->cmd), tmpJob->cmd)){
 						printf("shell function executed!\n");
 						error=0;
 					}else{
