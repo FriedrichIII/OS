@@ -10,6 +10,8 @@ md5sum testinput
 false ; status
 ls ; ls . ; ls . . . . ; echo foo ; echo foo bar moz ; echo moz
 # redirection
+echo --------starting redirections-----------
+
 wc < testinput
 cd ..
 echo mamba > tmp/testout
@@ -21,6 +23,8 @@ cat      <         testinput        >      tmp/testout
 wc<testinput>tmp/testout
 true; status > tmp/testout
 # pipeline
+echo --------starting pipeline-----------
+
 wc testinput | cat
 wc testinput | wc | cat
 cat testinput | cat | wc
@@ -29,6 +33,7 @@ wc<testinput|md5sum >tmp/testout
 cat testinput|md5sum|md5sum|md5sum|md5sum|md5sum|md5sum|md5sum
 false; status | cat
 # conditional
+echo --------starting conditionals-----------
 true && echo yo
 true && true && echo yo && echo foo
 echo foo || echo bar
@@ -41,18 +46,19 @@ echo foo&&echo bar | md5sum
 echo foo | md5sum && echo moh
 false || echo foo | md5sum || echo moh
 # background
+echo --------starting background-----------
 echo bar ; false & ; status
 
+echo --------starting various others-----------
 sleep 1 & echo foo
 sleep 4 && echo moo & ; echo bar
-echo foo > tmp/testout && sleep 4 && echo moo > tmp/testout & sleep 2 && cat < tmp/testout && sleep 6 && cat tmp/testout
-sleep 5 &
+echo foo > tmp/testout && sleep 2 && echo moo > tmp/testout & sleep 2 && cat < tmp/testout && sleep 2 && cat tmp/testout
+sleep 1 &
 sleep 2
 ls > tmp/apa
 wc -w < tmp/apa
 ls /usr/bin | sort -r | sort | sort -r
-yes > /dev/null
-ˆC (control-C)
+ˆC
 cat < tmp/apa | wc | wc > bepa
 cat bepa
 cd /tmp && ls -Fal

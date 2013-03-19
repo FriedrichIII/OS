@@ -86,7 +86,7 @@ int builtin_exit(int argc, char **argv) {
 }
 
 int builtin_status(int argc, char **argv) {
-	printf("Status of the last command executed : %d\n", error);
+	fprintf(stderr,"Status of the last command executed : %d\n", error);
 	/*int i;
 	printf("arglist:\n");
 	for (i=0; argv[i]!=NULL; i++){
@@ -147,7 +147,7 @@ printCwd() {
 job* newJob(cond condition, int inPipe) {
 	job* nJob = NULL;
 	if (!(nJob = malloc(sizeof(job)))) {
-		fprintf(stderr, "Memory allocation error when creating job, exiting.\n");
+		printf(stderr, "Memory allocation error when creating job, exiting.\n");
 		exit(EXIT_FAILURE);
 	} else {
 		nJob->cmd = NULL;
@@ -286,6 +286,8 @@ jobLauncher(job* jobs)
 					if(execvp(*(tmpJob->cmd), tmpJob->cmd)){
 						fprintf(stderr,"background : shell function failed!\n");
 						error=1;
+
+
 					}else{
 						fprintf(stderr,"background : shell function executed!\n");
 						error=0;
@@ -302,13 +304,9 @@ jobLauncher(job* jobs)
 				//no wait, its in the background!!!
 			}
 		}else{
-			dup2(tmpJob->in, STDIN_FILENO);
-			dup2(tmpJob->out, STDOUT_FILENO);
 
-			if (run_builtin(tmpJob->cmd)){
-
-				fprintf(stderr, "builtin executed!\n");
-
+			if (tmpJob->in == stdinCopy && tmpJob->out == stdoutCopy && run_builtin(tmpJob->cmd)){
+					fprintf(stderr, "builtin executed!\n");
 			}else{
 				if((childPid=fork()) < 0 ){
 						fprintf(stderr, "JobLauncher failed miserably to fork process O_o\n");
@@ -317,9 +315,19 @@ jobLauncher(job* jobs)
 				}else if(childPid == 0){
 					// Code only executed by the child
 					//change the handler of the interrup signal
+					dup2(tmpJob->in, STDIN_FILENO);
+					dup2(tmpJob->out, STDOUT_FILENO);
+
+					// close unused hald of pipe
+
+					//close((tmpJob->in)++);
+
 					signal(SIGINT, SIG_DFL);
 
-					if(execvp(*(tmpJob->cmd), tmpJob->cmd)){
+					if(run_builtin(tmpJob->cmd)){
+						fprintf(stderr, "builtin executed!\n");
+						error=0;
+					}else if(execvp(*(tmpJob->cmd), tmpJob->cmd)){
 						fprintf(stderr,"child %d : shell function failed!\n", childPid);
 						error=1;
 					}else{
