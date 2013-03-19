@@ -356,7 +356,7 @@ parseword(char **pp)
 	char *p = *pp;
 	char *word;
 
-	for (; isspace(*p) && *p!='\n'; p++)
+	for (; isspace(*p); p++)
 		/* NOTHING */;
 
 	word = p;
@@ -461,6 +461,8 @@ process(char *line)
 				parsingCommand = 0;
 				inputRedirection = 0;
 				break;
+			case 0:
+			case EOF:
 			case '\n':
 			case ';':
 				parsingCommand = 1;
@@ -544,6 +546,7 @@ main(void)
 		if (res == NULL)
 			break;
 
+		printf("Executing: %s", line);
 		process(line);
 	}
 
