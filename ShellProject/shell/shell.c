@@ -534,6 +534,8 @@ main(void)
 	char line[1000];
 	char *res;
 
+	stdinCopy=dup(STDIN_FILENO);
+	stdoutCopy=dup(STDOUT_FILENO);
 
 	for (;;) {
 		printCwd();
