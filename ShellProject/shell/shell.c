@@ -295,8 +295,6 @@ jobLauncher(job* jobs)
 
 				fprintf(stderr,"background : child %d", childPid);
 
-				if (tmpJob->in!=STDIN_FILENO) close(tmpJob->in);
-				if (tmpJob->out!=STDOUT_FILENO) close(tmpJob->out);
 				exit(error);
 
 
