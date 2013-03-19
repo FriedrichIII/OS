@@ -27,6 +27,7 @@ typedef struct job_s{
 	int out;
 	int background;
 	cond condition;
+	int skip;
 	int valid;
 	struct job_s *next;
 } job;
@@ -155,6 +156,7 @@ job* newJob(cond condition, int inPipe) {
 		nJob->out = STDOUT_FILENO;
 		nJob->background = 0;
 		nJob->condition = condition;
+		nJob->skip = 0;
 		nJob->valid = 0;
 		nJob->next = NULL;
 	}
@@ -206,9 +208,10 @@ storeParsed(job *givenJob, int parsingCommand, int inputRedirection, char **pars
 				givenJob->in = fd;
 			}
 		} else {
-			int fd = open(parsed[0], O_WRONLY|O_CREAT, 666);
+			int fd = open(parsed[0], O_WRONLY|O_CREAT, 0666);
 			if (fd < 0) {
 				fprintf(stderr, "%s: Unable to open or create\n", parsed[0]);
+				givenJob->valid = 0;
 			} else {
 				givenJob->out = fd;
 			}
@@ -252,6 +255,11 @@ jobLauncher(job* jobs)
 		if(tmpJob->condition  == AND && error){
 			continue;
 		}else if(tmpJob->condition == OR && !error){
+			continue;
+		}
+
+		if(tmpJob->skip) {
+			error=0;
 			continue;
 		}
 
@@ -300,7 +308,7 @@ jobLauncher(job* jobs)
 
 			if (run_builtin(tmpJob->cmd)){
 
-				fprintf(stderr, "builtin executed!\n", childPid);
+				fprintf(stderr, "builtin executed!\n");
 
 			}else{
 				if((childPid=fork()) < 0 ){
@@ -348,7 +356,7 @@ parseword(char **pp)
 	char *p = *pp;
 	char *word;
 
-	for (; isspace(*p); p++)
+	for (; isspace(*p) && *p!='\n'; p++)
 		/* NOTHING */;
 
 	word = p;
@@ -374,6 +382,7 @@ process(char *line)
 	int ch, ch2;
 	char *p, *word;
 
+
 	/* args: stores all parsed chain of word
 	 * narg: points after the last parsed word
 	 * harg: points on the first word of the chain that will be stored in currentJob */
@@ -397,6 +406,9 @@ process(char *line)
 	int condition = NONE;
 	int inPipe = STDIN_FILENO;
 
+	/* interrupt for loop when comment is seen*/
+	int commented = 0;
+
 	p = line;
 
 	harg = args;
@@ -408,7 +420,7 @@ process(char *line)
 	previousJob = jobs;
 	currentJob = previousJob->next;
 
-	for (; *p != 0; p != line && p++) {
+	for (; *p != 0 && !commented; p != line && p++) {
 		word = parseword(&p);
 
 		ch = *p;
@@ -427,10 +439,12 @@ process(char *line)
 		 * p points at the following character of line
 		 */
 
-		if (!isblank(ch) && ch) {
+		if (!isblank(ch)) {
 			if(!currentJob) {
 				currentJob = newJob(condition, inPipe);
 				previousJob->next = currentJob;
+				// skip indicates an empty job that produce no error
+				if (!(*harg)) currentJob->skip = 1;
 				condition = NONE;
 				inPipe = STDIN_FILENO;
 			}
@@ -484,6 +498,10 @@ process(char *line)
 				break;
 			case '#':
 				// TODO handle comments;
+				parsingCommand = 1;
+				previousJob = currentJob; // <=> previousJob = previousJob->next
+				currentJob = currentJob->next; // <=> currentJob = NULL
+				commented = 1;
 				break;
 			default:
 				fprintf(stderr, "internal unexpected error, exiting\n");
@@ -510,8 +528,8 @@ main(void)
 		printf("Error while setting Ctrl-C handler\n");
 	}
 
-	int testscriptfd = open("testscript", O_RDONLY);
-	dup2(testscriptfd, STDIN_FILENO);
+//	int testscriptfd = open("testscript", O_RDONLY);
+//	dup2(testscriptfd, STDIN_FILENO);
 
 
 	stdinCopy = dup(STDIN_FILENO);
