@@ -140,8 +140,31 @@ printCwd() {
 	printf("%s %% ", cwd);
 }
 
+
+/**
+ * Creates a new job
+ */
+job* newJob(cond condition, int inPipe) {
+	job* nJob = NULL;
+	if (!(nJob = malloc(sizeof(job)))) {
+		fprintf(stderr, "Memory allocation error when creating job, exiting.\n");
+		exit(EXIT_FAILURE);
+	} else {
+		nJob->condition = condition;
+		nJob->next = NULL;
+		nJob->in = inPipe;
+		nJob->out = STDOUT_FILENO;
+		nJob->valid = 0;
+	}
+	return nJob;
+}
+
+job* defaultJob(void) {
+	return newJob(NONE, STDIN_FILENO);
+}
+
 /* Creates a default new job */
-job * defaultJob(void) {
+job * defaultJob_old(void) {
 	job* nJob;
 
 	if(!(nJob = malloc(sizeof(job)))) {
