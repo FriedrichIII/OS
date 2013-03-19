@@ -528,19 +528,9 @@ process(char *line)
 		}
 	} // end for
 
-	if (!currentJob->cmd) {
-		job *previous = NULL;
-		job *next=jobs;
-
-		while(next&&next!=currentJob) {
-			previous = next;
-			next = next->next;
-		}
-
-		freeJob(&next);
-		if (previous) {
-			previous->next = NULL;
-		}
+	if (currentJob==jobs) {
+		freeJob(&jobs);
+		currentJob = NULL;
 	}
 
 	// launchJobs(jobs)
