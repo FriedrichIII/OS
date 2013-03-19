@@ -193,23 +193,24 @@ void
 storeParsed(job *currentJob, int parsingCommand, int inputRedirection, char **parsed )
 {
 
-	job *localJob = *currentJob;
+	job *givenJob = currentJob;
+
 
 	int success = 0;
 	if (parsed && parsed[0]) {
 		if (parsingCommand) {
-			localJob->cmd = parsed;
+			givenJob->cmd = parsed;
 			success = 1;
 		} else if (inputRedirection) {
-			localJob->in = open(parsed[0], O_RDONLY);
-			if (localJob->in < 0) {
+			givenJob->in = open(parsed[0], O_RDONLY);
+			if (givenJob->in < 0) {
 				fprintf(stderr, "%s: No such file or directory\n", parsed[0]);
 			} else {
 				success = 1;
 			}
 		} else {
-			localJob->out = open(parsed[0], O_WRONLY|O_CREAT, 666);
-			if (localJob->out < 0) {
+			givenJob->out = open(parsed[0], O_WRONLY|O_CREAT, 666);
+			if (givenJob->out < 0) {
 				fprintf(stderr, "%s: Unable to open or create\n", parsed[0]);
 			} else {
 				success = 1;
@@ -217,7 +218,7 @@ storeParsed(job *currentJob, int parsingCommand, int inputRedirection, char **pa
 		}
 	}
 
-	localJob->valid &= success;
+	givenJob->valid &= success;
 }
 
 /* Frees the given job.
