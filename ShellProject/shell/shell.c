@@ -502,7 +502,6 @@ main(void)
 		printf("Error while setting Ctrl-C handler\n");
 	}
 
-
 	char line[1000];
 	char *res;
 
