@@ -305,7 +305,7 @@ jobLauncher(job* jobs)
 			}
 		}else{
 
-			if (tmpJob->in == stdinCopy && tmpJob->out == stdoutCopy && run_builtin(tmpJob->cmd)){
+			if (tmpJob->in == STDIN_FILENO && tmpJob->out == STDOUT_FILENO && run_builtin(tmpJob->cmd)){
 					fprintf(stderr, "builtin executed!\n");
 			}else{
 				if((childPid=fork()) < 0 ){
@@ -325,7 +325,7 @@ jobLauncher(job* jobs)
 					signal(SIGINT, SIG_DFL);
 
 					if(run_builtin(tmpJob->cmd)){
-						fprintf(stderr, "builtin executed!\n");
+						fprintf(stderr, "child %d : builtin executed!\n");
 						error=0;
 					}else if(execvp(*(tmpJob->cmd), tmpJob->cmd)){
 						fprintf(stderr,"child %d : shell function failed!\n", childPid);
