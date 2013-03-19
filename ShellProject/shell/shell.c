@@ -407,6 +407,39 @@ process(char *line)
 		 * p points at the following character of line
 		 */
 
+		if (!isblank(ch)) {
+			if(!currentJob) {
+				currentJob = newJob(cond, inPipe);
+				previousJob->next = currentJob;
+			}
+			narg++;
+			*narg=NULL;
+			storeParsed(currentJob, parsingCommand, inputRedirection, harg);
+			harg = narg;
+			switch (ch) {
+			case '>':
+				parsingCommand = 0;
+				inputRedirection = 0;
+				break;
+			case ';':
+				parsingCommand = 1;
+				condition = NONE;
+				break;
+			case '&':
+				p++;
+				ch2 = *p;
+				if (ch2=='&') {
+					parsingCommand = 1;
+					condition = AND;
+				} else {
+					currentJob->background = 1;
+					parsingCommand = 1;
+					condition = NONE;
+				}
+				break;
+			}
+		}
+
 		switch (ch) {
 		case ' ':
 		case '\t': break;
@@ -438,6 +471,7 @@ process(char *line)
 			storeParsed(currentJob, parsingCommand, inputRedirection, harg);
 			previousJob = previousJob->next;
 			currentJob = NULL;
+
 			parsingCommand = 1;
 			narg++;
 			*narg=NULL;
