@@ -14,6 +14,8 @@
 #include <fcntl.h>
 
 static int error;
+static int stdinCopy;
+static int stdoutCopy;
 
 typedef int (*builtin_cmd)(int, char **);
 
@@ -303,8 +305,9 @@ jobLauncher(job* jobs)
 				}else{
 					// Code only executed by parent process
 					printf("parent waiting on child\n");
-					dup2(0, STDIN_FILENO);
-					dup2(1, STDOUT_FILENO);
+					// TODO
+					dup2(stdinCopy, STDIN_FILENO);
+					dup2(stdoutCopy, STDOUT_FILENO);
 
 					waitpid( &childPid, &error, 0 );
 				}
@@ -550,6 +553,9 @@ main(void)
 	if (signal(SIGINT, SIG_IGN) == SIG_ERR) {
 		printf("Error while setting Ctrl-C handler\n");
 	}
+
+	stdinCopy = dup(STDIN_FILENO);
+	stdoutCopy = dup(STDOUT_FILENO);
 
 	char line[1000];
 	char *res;
