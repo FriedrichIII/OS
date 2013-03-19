@@ -196,14 +196,28 @@ storeParsed(job **currentJob, int parsingCommand, int inputRedirection, char **p
 	localJob->valid &= success;
 }
 
+void
+popAndFreeJob(job** jobList) {
+	job *tail = NULL;
+	if (jobList&&*jobList) {
+		tail = (*jobList)->next;
+		freeJob(jobList);
+		*jobList = tail;
+	}
+}
+
 /* Frees the given job.
  * The pointer on job is set to NULL.
  * @param address of the pointer on job
  */
 void
 freeJob(job **oldJob) {
-	free(*oldJob);
-	*oldJob = NULL;
+	job *localJob = *oldJob;
+	/* close fd. referred file is really closed only if it's last fd is closed*/
+	close(localJob->in);
+	close(localJob->out);
+	free(localJob);
+	localJob = NULL;
 }
 
 void
@@ -318,7 +332,7 @@ parseword(char **pp)
 
 	word = p;
 
-	for (; strchr(" \t;&|><\n", *p) == NULL; p++)
+	for (; strchr(" \t;&|><\n#", *p) == NULL; p++)
 		/* NOTHING */;
 
 	*pp = p;
@@ -327,15 +341,12 @@ parseword(char **pp)
 
 /* Parses an input line of the shell and creates the associated job list, then call jobLauncher(jobs);
  * Known bugs:
- * -	shellCmd |
- * 		=> creates an empty job with the pipe as input
+ * -	> file.txt will set status at 1 (error) but still creates a file.
+ * SOLVED (verifiy anyway: >test.txt;status should create test.txt and print status 0)
  *
  * -	Unvalid syntax as shellCmd & | ; does not throw any error but creates unvalid empty jobs:
  * 		shellCmd & [empty, unvalid] | [empty, unvalid] ;
- *
- * Particular cases:
- * 		shellCmd & shellCmd
- * 		=> creates 2 jobs, the first to be executed in background
+ * 		thus error status will be set to 1 with no error message
  */
 static void
 process(char *line)
@@ -389,17 +400,8 @@ process(char *line)
 		}
 
 		/*
-		 * Here you should put your code for processing the commands
-		 * Up to this point, pointer word points to the next word,
-		 * ch points to the first character after the word
-		 * You should process according to what is in the ch.
-		 * For example, use switch(). Next example will skip whitespaces
-		 * and detect the redirection of the standard output.
-		 *
-
 		 * at this point, ch is a character from the string " \t;&|><\n"
 		 * p points at the following character of line
-		 
 		 */
 
 		switch (ch) {
@@ -475,7 +477,8 @@ process(char *line)
 					break;
 				default:
 					printf("Pipe between first and second\n");
-					// TODO check in other case if creating a valid empty job
+					// DONE check in other case if creating a valid empty job
+					// storeparsed set valid to 0 if the stored cmd is empty
 					storeParsed(&currentJob, parsingCommand, inputRedirection, harg);
 					if (pipe(pip) != 0) {
 						fprintf(stderr, "pipe error, commands will be executed independently.\n");
@@ -515,21 +518,14 @@ process(char *line)
 			harg = narg;
 			/*RUN_COMMAND();*/
 			break;
+		case '#':
+			*(p+1)=0;
+			break;
 		default:
 			fprintf(stderr, "internal unexpected error, exiting\n");
 			exit(1);
 			break;
 		}
-
-		/*
-		 *
-		 * The previous example is broken in many ways, though,
-		 * so you should not use it verbatim.
-		 *
-		 */
-
-		/* add your code here */
-		;
 	} // end for
 
 	if (!currentJob->cmd) {
