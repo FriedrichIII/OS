@@ -226,7 +226,7 @@ jobLauncher(job* jobs)
 	job* tmpJob=jobs;
 	pid_t childPid;
 
-	for(;tmpJob;tmpJob=tmpJob->next){
+	for(;tmpJob;popAndFreeJob(&tmpJob)){
 
 		// Test for conditions on previous commands !!! error==0 if no error...
 		if(tmpJob->condition  == AND && error){
@@ -235,6 +235,11 @@ jobLauncher(job* jobs)
 		}else if(tmpJob->condition == OR && !error){
 			return;
 		}
+		if(!(tmpJob->valid)){
+			error=1;
+			return;
+		}
+
 
 		if(tmpJob->background){
 			printf("We are in background mode! O_o\n");
@@ -548,7 +553,6 @@ main(void)
 	if (signal(SIGINT, SIG_IGN) == SIG_ERR) {
 		printf("Error while setting Ctrl-C handler\n");
 	}
-
 
 	char line[1000];
 	char *res;
