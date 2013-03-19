@@ -196,16 +196,6 @@ storeParsed(job **currentJob, int parsingCommand, int inputRedirection, char **p
 	localJob->valid &= success;
 }
 
-void
-popAndFreeJob(job** jobList) {
-	job *tail = NULL;
-	if (jobList&&*jobList) {
-		tail = (*jobList)->next;
-		freeJob(jobList);
-		*jobList = tail;
-	}
-}
-
 /* Frees the given job.
  * The pointer on job is set to NULL.
  * @param address of the pointer on job
@@ -218,6 +208,16 @@ freeJob(job **oldJob) {
 	close(localJob->out);
 	free(localJob);
 	localJob = NULL;
+}
+
+void
+popAndFreeJob(job** jobList) {
+	job *tail = NULL;
+	if (jobList&&*jobList) {
+		tail = (*jobList)->next;
+		freeJob(jobList);
+		*jobList = tail;
+	}
 }
 
 void
