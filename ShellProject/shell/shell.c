@@ -200,14 +200,14 @@ storeParsed(job *givenJob, int parsingCommand, int inputRedirection, char **pars
 			givenJob->cmd = parsed;
 			givenJob->valid = 1;
 		} else if (inputRedirection) {
-			int fd = open(parsed[0], O_RDONLY);
+			int fd = fileno(fopen(parsed[0], "r"));
 			if (fd < 0) {
 				fprintf(stderr, "%s: No such file or directory\n", parsed[0]);
 			} else {
 				givenJob->in = fd;
 			}
 		} else {
-			int fd = open(parsed[0], O_WRONLY|O_CREAT, 0666);
+			int fd = fileno(fopen(parsed[0], "w"));
 			if (fd < 0) {
 				fprintf(stderr, "%s: Unable to open or create\n", parsed[0]);
 				givenJob->valid = 0;
@@ -530,8 +530,8 @@ main(void)
 	}
 
 // uncomment to run the testscript
-//	int testscriptfd = open("testscript", O_RDONLY);
-//	dup2(testscriptfd, STDIN_FILENO);
+	int testscriptfd = open("testscript", O_RDONLY);
+	dup2(testscriptfd, STDIN_FILENO);
 
 	char line[1000];
 	char *res;
