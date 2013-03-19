@@ -252,16 +252,16 @@ jobLauncher(job* jobs)
 		}else if(tmpJob->condition == OR && !error){
 			continue;
 		}
+
 		if(!(tmpJob->valid)){
 			error=1;
 			continue;
 		}
 
-
 		if(tmpJob->background){
 			printf("We are in background mode! O_o\n");
 			if((childPid=fork()) < 0 ){
-				printf("JobLauncher failed miserably to fork process O_o\n");
+				fprintf(stderr,"JobLauncher failed miserably to fork process O_o\n");
 				exit(1);
 
 			}else if(childPid== 0){
@@ -272,17 +272,19 @@ jobLauncher(job* jobs)
 
 				if (run_builtin(tmpJob->cmd)){
 
-					printf("background : builtin executed!\n");
+					fprintf(stderr,"background : builtin executed!\n");
 
 				}else{
 					if(execvp(*(tmpJob->cmd), tmpJob->cmd)){
-						printf("background : shell function failed!\n");
+						fprintf(stderr,"background : shell function failed!\n");
 						error=1;
 					}else{
-						printf("background : shell function executed!\n");
+						fprintf(stderr,"background : shell function executed!\n");
 						error=0;
 					}
 				}
+
+				fprintf(stderr,"background : child %d", childPid);
 				exit(error);
 
 
@@ -296,11 +298,11 @@ jobLauncher(job* jobs)
 
 			if (run_builtin(tmpJob->cmd)){
 
-				printf("builtin executed!\n");
+				fprintf(stderr, "builtin executed!\n");
 
 			}else{
 				if((childPid=fork()) < 0 ){
-						printf("JobLauncher failed miserably to fork process O_o\n");
+						fprintf(stderr, "JobLauncher failed miserably to fork process O_o\n");
 						exit(1);
 
 				}else if(childPid == 0){
@@ -309,29 +311,28 @@ jobLauncher(job* jobs)
 					signal(SIGINT, SIG_DFL);
 
 					if(execvp(*(tmpJob->cmd), tmpJob->cmd)){
-						printf("child %d : shell function failed!\n", childPid);
+						fprintf(stderr,"child %d : shell function failed!\n", childPid);
 						error=1;
 					}else{
 
-						printf("child %d : shell function executed!\n", childPid);
+						fprintf(stderr,"child %d : shell function executed!\n", childPid);
 						error=0;
 					}
+					fprintf(stderr,"child %d : exiting\n", childPid);
 					exit(error);
 				}else{
 					// Code only executed by parent process
-					printf("parent %d : waiting on child %d\n", getpid(),childPid);
+
 					dup2(stdinCopy, STDIN_FILENO);
 					dup2(stdoutCopy, STDOUT_FILENO);
 
+					printf("parent %d : waiting on child %d\n", getpid(),childPid);
 					waitpid(childPid, &error, 0 );
 				}
 			}
-
 		}
 	}
-
 }
-
 
 /*
  * Takes a pointer to a string pointer and advances this string pointer
@@ -495,7 +496,7 @@ process(char *line)
 
 	freeJob(&jobs);
 	currentJob = NULL;
-	printf("Jobs executed sucessfully\n");
+	printf("All command on this line have been executed\n");
 	// shellcmd | | | | shellcmd
 }
 
@@ -507,15 +508,15 @@ main(void)
 		printf("Error while setting Ctrl-C handler\n");
 	}
 
-	/*int testscriptfd = open("testscript", O_RDONLY);
+	int testscriptfd = open("testscript", O_RDONLY);
 	dup2(testscriptfd, STDIN_FILENO);
 
-
 	stdinCopy = dup(STDIN_FILENO);
-	stdoutCopy = dup(STDOUT_FILENO);*/
+	stdoutCopy = dup(STDOUT_FILENO);
 
 	char line[1000];
 	char *res;
+
 
 	for (;;) {
 		printCwd();
