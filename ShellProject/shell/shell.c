@@ -306,7 +306,7 @@ jobLauncher(job* jobs)
 					dup2(0, STDIN_FILENO);
 					dup2(1, STDOUT_FILENO);
 
-					waitpid( &childPid, &error, 0 );
+					waitpid( childPid, &error, 0 );
 				}
 			}
 
