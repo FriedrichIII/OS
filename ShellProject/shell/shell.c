@@ -292,21 +292,21 @@ jobLauncher(job* jobs)
 					signal(SIGINT, SIG_DFL);
 
 					if(execvp(*(tmpJob->cmd), tmpJob->cmd)){
-						printf("shell function failed!\n");
+						printf("child %d : shell function failed!\n", childPid);
 						error=1;
 					}else{
 
-						printf("shell function executed!\n");
+						printf("child %d : shell function executed!\n", childPid);
 						error=0;
 					}
 					exit(error);
 				}else{
 					// Code only executed by parent process
-					printf("parent waiting on child\n");
+					printf("parent %d : waiting on child %d\n", getpid(),childPid);
 					dup2(stdinCopy, STDIN_FILENO);
 					dup2(stdoutCopy, STDOUT_FILENO);
 
-					waitpid( childPid, &error, 0 );
+					waitpid(childPid, &error, 0 );
 				}
 			}
 
