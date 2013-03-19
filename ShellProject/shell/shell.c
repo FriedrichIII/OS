@@ -42,28 +42,26 @@ struct builtin {
 
 int
 builtin_cd(int argc, char **argv) {
-	printf("running cd\n");
 	
 	int status;
 	
 	if (argc == 1 && strcmp(argv[0], "cd") == 0) {
-		fprintf(stderr, "Not enough argument for command cd.");
+		fprintf(stderr, "Not enough arguments for command cd.\n");
 		status = 1;
+		//to return to home directory instead :
+		//status = chdir(getenv("HOME"));
 	} else if (argc == 2) {
 		if(strchr(argv[1], '~')) {
-			/*
-			printf("true\n");
 			char* rep = str_replace(argv[1], "~", getenv("HOME"));
 			status = chdir(rep);
 			free(rep);
 			rep = NULL;
-			*/
 		} else {
 			status = chdir(argv[1]);
 		}
 	}
 	
-	if (status != 0) {
+	if (status != 0 && errno != 0) {
 		switch(errno) {
 			case ENOENT:
 				fprintf (stderr, "%s does not exist.\n", argv[1]);
@@ -509,12 +507,12 @@ main(void)
 		printf("Error while setting Ctrl-C handler\n");
 	}
 
-	int testscriptfd = open("testscript", O_RDONLY);
+	/*int testscriptfd = open("testscript", O_RDONLY);
 	dup2(testscriptfd, STDIN_FILENO);
 
 
 	stdinCopy = dup(STDIN_FILENO);
-	stdoutCopy = dup(STDOUT_FILENO);
+	stdoutCopy = dup(STDOUT_FILENO);*/
 
 	char line[1000];
 	char *res;
