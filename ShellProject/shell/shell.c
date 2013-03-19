@@ -414,7 +414,7 @@ process(char *line)
 	int inPipe = STDIN_FILENO;
 
 	/* interrupt for loop when comment is seen*/
-	int commented = 0;
+	int stopLoop = 0;
 
 	p = line;
 
@@ -427,7 +427,7 @@ process(char *line)
 	previousJob = jobs;
 	currentJob = previousJob->next;
 
-	for (; *p != 0 && !commented; p != line && p++) {
+	for (; *p != 0 && !stopLoop; p++) {
 		word = parseword(&p);
 
 		ch = *p;
@@ -470,6 +470,7 @@ process(char *line)
 				break;
 			case 0:
 			case EOF:
+				stopLoop = 1;
 			case '\n':
 			case ';':
 				parsingCommand = 1;
@@ -482,6 +483,7 @@ process(char *line)
 				if (ch2=='&') {
 					condition = AND;
 				} else {
+					p--;
 					currentJob->background = 1;
 				}
 				parsingCommand = 1;
@@ -494,6 +496,7 @@ process(char *line)
 				if (ch2=='|') {
 					condition = OR;
 				} else {
+					p--;
 					if (pipe(pip) != 0) {
 						fprintf(stderr, "pipe error, commands will be executed independently.\n");
 					} else {
@@ -509,7 +512,7 @@ process(char *line)
 				parsingCommand = 1;
 				previousJob = currentJob; // <=> previousJob = previousJob->next
 				currentJob = currentJob->next; // <=> currentJob = NULL
-				commented = 1;
+				stopLoop = 1;
 				break;
 			default:
 				fprintf(stderr, "internal unexpected error, exiting\n");
@@ -524,6 +527,7 @@ process(char *line)
 
 	freeJob(&jobs);
 	currentJob = NULL;
+	previousJob = NULL;
 	printf("All command on this line have been executed\n");
 	// shellcmd | | | | shellcmd
 }
