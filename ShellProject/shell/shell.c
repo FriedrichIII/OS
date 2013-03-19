@@ -150,11 +150,13 @@ job* newJob(cond condition, int inPipe) {
 		fprintf(stderr, "Memory allocation error when creating job, exiting.\n");
 		exit(EXIT_FAILURE);
 	} else {
-		nJob->condition = condition;
-		nJob->next = NULL;
+		nJob->cmd = NULL;
 		nJob->in = inPipe;
 		nJob->out = STDOUT_FILENO;
+		nJob->background = 0;
+		nJob->condition = condition;
 		nJob->valid = 0;
+		nJob->next = NULL;
 	}
 	return nJob;
 }
