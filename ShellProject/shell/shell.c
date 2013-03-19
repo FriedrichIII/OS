@@ -261,6 +261,7 @@ jobLauncher(job* jobs)
 		}else if(tmpJob->condition == OR && !error){
 			continue;
 		}
+
 		if(!(tmpJob->valid)){
 			error=1;
 			continue;
@@ -521,8 +522,6 @@ main(void)
 
 	char line[1000];
 	char *res;
-
-
 
 
 	for (;;) {
