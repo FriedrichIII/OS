@@ -150,11 +150,13 @@ job* newJob(cond condition, int inPipe) {
 		fprintf(stderr, "Memory allocation error when creating job, exiting.\n");
 		exit(EXIT_FAILURE);
 	} else {
-		nJob->condition = condition;
-		nJob->next = NULL;
+		nJob->cmd = NULL;
 		nJob->in = inPipe;
 		nJob->out = STDOUT_FILENO;
+		nJob->background = 0;
+		nJob->condition = condition;
 		nJob->valid = 0;
+		nJob->next = NULL;
 	}
 	return nJob;
 }
@@ -193,23 +195,24 @@ void
 storeParsed(job *currentJob, int parsingCommand, int inputRedirection, char **parsed )
 {
 
-	job *localJob = *currentJob;
+	job *givenJob = currentJob;
+
 
 	int success = 0;
 	if (parsed && parsed[0]) {
 		if (parsingCommand) {
-			localJob->cmd = parsed;
+			givenJob->cmd = parsed;
 			success = 1;
 		} else if (inputRedirection) {
-			localJob->in = open(parsed[0], O_RDONLY);
-			if (localJob->in < 0) {
+			givenJob->in = open(parsed[0], O_RDONLY);
+			if (givenJob->in < 0) {
 				fprintf(stderr, "%s: No such file or directory\n", parsed[0]);
 			} else {
 				success = 1;
 			}
 		} else {
-			localJob->out = open(parsed[0], O_WRONLY|O_CREAT, 666);
-			if (localJob->out < 0) {
+			givenJob->out = open(parsed[0], O_WRONLY|O_CREAT, 666);
+			if (givenJob->out < 0) {
 				fprintf(stderr, "%s: Unable to open or create\n", parsed[0]);
 			} else {
 				success = 1;
@@ -217,7 +220,7 @@ storeParsed(job *currentJob, int parsingCommand, int inputRedirection, char **pa
 		}
 	}
 
-	localJob->valid &= success;
+	givenJob->valid &= success;
 }
 
 /* Frees the given job.
@@ -315,21 +318,21 @@ jobLauncher(job* jobs)
 					signal(SIGINT, SIG_DFL);
 
 					if(execvp(*(tmpJob->cmd), tmpJob->cmd)){
-						printf("shell function failed!\n");
+						printf("child %d : shell function failed!\n", childPid);
 						error=1;
 					}else{
 
-						printf("shell function executed!\n");
+						printf("child %d : shell function executed!\n", childPid);
 						error=0;
 					}
 					exit(error);
 				}else{
 					// Code only executed by parent process
-					printf("parent waiting on child\n");
+					printf("parent %d : waiting on child %d\n", getpid(),childPid);
 					dup2(stdinCopy, STDIN_FILENO);
 					dup2(stdoutCopy, STDOUT_FILENO);
 
-					waitpid( childPid, &error, 0 );
+					waitpid(childPid, &error, 0 );
 				}
 			}
 
