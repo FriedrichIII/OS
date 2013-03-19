@@ -192,35 +192,28 @@ job * defaultJob_old(void) {
  * @param inputRedirection indicates if the if the redirection is on the input (1) or the output (0)
  * @param parsed the parsed chain of word to use in the method*/
 void
-storeParsed(job *currentJob, int parsingCommand, int inputRedirection, char **parsed )
+storeParsed(job *givenJob, int parsingCommand, int inputRedirection, char **parsed )
 {
-
-	job *givenJob = currentJob;
-
-
-	int success = 0;
 	if (parsed && parsed[0]) {
 		if (parsingCommand) {
 			givenJob->cmd = parsed;
-			success = 1;
+			givenJob->valid = 1;
 		} else if (inputRedirection) {
-			givenJob->in = open(parsed[0], O_RDONLY);
-			if (givenJob->in < 0) {
+			int fd = open(parsed[0], O_RDONLY);
+			if (fd < 0) {
 				fprintf(stderr, "%s: No such file or directory\n", parsed[0]);
 			} else {
-				success = 1;
+				givenJob->in = fd;
 			}
 		} else {
-			givenJob->out = open(parsed[0], O_WRONLY|O_CREAT, 666);
-			if (givenJob->out < 0) {
+			int fd = open(parsed[0], O_WRONLY|O_CREAT, 666);
+			if (fd < 0) {
 				fprintf(stderr, "%s: Unable to open or create\n", parsed[0]);
 			} else {
-				success = 1;
+				givenJob->out = fd;
 			}
 		}
 	}
-
-	givenJob->valid &= success;
 }
 
 /* Frees the given job.
