@@ -294,6 +294,7 @@ jobLauncher(job* jobs)
 				}
 
 				fprintf(stderr,"background : child %d", childPid);
+
 				exit(error);
 
 
