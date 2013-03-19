@@ -332,7 +332,7 @@ parseword(char **pp)
 
 	word = p;
 
-	for (; strchr(" \t;&|><\n", *p) == NULL; p++)
+	for (; strchr(" \t;&|><\n#", *p) == NULL; p++)
 		/* NOTHING */;
 
 	*pp = p;
@@ -517,6 +517,9 @@ process(char *line)
 			parsingCommand = 1;
 			harg = narg;
 			/*RUN_COMMAND();*/
+			break;
+		case '#':
+			*(p+1)=0;
 			break;
 		default:
 			fprintf(stderr, "internal unexpected error, exiting\n");
