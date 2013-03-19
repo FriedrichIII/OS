@@ -202,9 +202,10 @@ storeParsed(job **currentJob, int parsingCommand, int inputRedirection, char **p
  */
 void
 freeJob(job **oldJob) {
-	/* close fd. referred file is really closed only if it's last fd is closed*/
+	/* close fd. referred file is really closed only if it's last fd is closed
 	if ((*oldJob)->in!=STDIN_FILENO) close((*oldJob)->in);
 	if ((*oldJob)->out!=STDOUT_FILENO) close((*oldJob)->out);
+	*/
 	free(*oldJob);
 	*oldJob = NULL;
 }
