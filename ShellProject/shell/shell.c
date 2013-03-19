@@ -202,12 +202,11 @@ storeParsed(job **currentJob, int parsingCommand, int inputRedirection, char **p
  */
 void
 freeJob(job **oldJob) {
-	job *localJob = *oldJob;
 	/* close fd. referred file is really closed only if it's last fd is closed*/
-	close(localJob->in);
-	close(localJob->out);
-	free(localJob);
-	localJob = NULL;
+	if ((*oldJob)->in!=STDIN_FILENO) close((*oldJob)->in);
+	if ((*oldJob)->out!=STDOUT_FILENO) close((*oldJob)->out);
+	free(*oldJob);
+	*oldJob = NULL;
 }
 
 void
@@ -524,6 +523,8 @@ process(char *line)
 			break;
 		case 0:
 			printf("empty line.\n");
+			freeJob(&jobs);
+			currentJob = NULL;
 			/*empty line?*/
 			break;
 		default:
@@ -536,6 +537,7 @@ process(char *line)
 	// launchJobs(jobs)
 	jobLauncher(jobs);
 
+	printf("Jobs executed sucessfully\n");
 	// shellcmd | | | | shellcmd
 }
 
