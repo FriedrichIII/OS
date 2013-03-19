@@ -86,7 +86,7 @@ int builtin_exit(int argc, char **argv) {
 }
 
 int builtin_status(int argc, char **argv) {
-	fprintf(stderr,"Status of the last command executed : %d\n", error);
+	printf("Status of the last command executed : %d\n", error);
 	/*int i;
 	printf("arglist:\n");
 	for (i=0; argv[i]!=NULL; i++){
@@ -147,7 +147,7 @@ printCwd() {
 job* newJob(cond condition, int inPipe) {
 	job* nJob = NULL;
 	if (!(nJob = malloc(sizeof(job)))) {
-		printf(stderr, "Memory allocation error when creating job, exiting.\n");
+		fprintf(stderr, "Memory allocation error when creating job, exiting.\n");
 		exit(EXIT_FAILURE);
 	} else {
 		nJob->cmd = NULL;
@@ -325,7 +325,7 @@ jobLauncher(job* jobs)
 					signal(SIGINT, SIG_DFL);
 
 					if(run_builtin(tmpJob->cmd)){
-						fprintf(stderr, "child %d : builtin executed!\n");
+						fprintf(stderr, "child %d : builtin executed!\n", childPid);
 						error=0;
 					}else if(execvp(*(tmpJob->cmd), tmpJob->cmd)){
 						fprintf(stderr,"child %d : shell function failed!\n", childPid);
@@ -415,7 +415,7 @@ process(char *line)
 	int inPipe = STDIN_FILENO;
 
 	/* interrupt for loop when comment is seen*/
-	int commented = 0;
+	int stopLoop = 0;
 
 	p = line;
 
@@ -428,7 +428,7 @@ process(char *line)
 	previousJob = jobs;
 	currentJob = previousJob->next;
 
-	for (; *p != 0 && !commented; p != line && p++) {
+	for (; *p != 0 && !stopLoop; p++) {
 		word = parseword(&p);
 
 		ch = *p;
@@ -471,6 +471,7 @@ process(char *line)
 				break;
 			case 0:
 			case EOF:
+				stopLoop = 1;
 			case '\n':
 			case ';':
 				parsingCommand = 1;
@@ -510,7 +511,7 @@ process(char *line)
 				parsingCommand = 1;
 				previousJob = currentJob; // <=> previousJob = previousJob->next
 				currentJob = currentJob->next; // <=> currentJob = NULL
-				commented = 1;
+				stopLoop = 1;
 				break;
 			default:
 				fprintf(stderr, "internal unexpected error, exiting\n");
@@ -525,6 +526,7 @@ process(char *line)
 
 	freeJob(&jobs);
 	currentJob = NULL;
+	previousJob = NULL;
 	printf("All command on this line have been executed\n");
 	// shellcmd | | | | shellcmd
 }
