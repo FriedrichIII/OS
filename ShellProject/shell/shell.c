@@ -484,6 +484,7 @@ process(char *line)
 				if (ch2=='&') {
 					condition = AND;
 				} else {
+					p--;
 					currentJob->background = 1;
 				}
 				parsingCommand = 1;
@@ -496,6 +497,7 @@ process(char *line)
 				if (ch2=='|') {
 					condition = OR;
 				} else {
+					p--;
 					if (pipe(pip) != 0) {
 						fprintf(stderr, "pipe error, commands will be executed independently.\n");
 					} else {
