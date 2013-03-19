@@ -391,7 +391,7 @@ process(char *line)
 		ch = *p;
 		*p = 0;
 
-		printf("parseword:\nword: '%s'\nend char:'%c'\nline left '%s'\n", word, ch, p + 1);
+//		printf("parseword:\nword: '%s'\nend char:'%c'\nline left '%s'\n", word, ch, p + 1);
 
 
 		if (word != NULL) {
