@@ -212,7 +212,7 @@ jobLauncher(job* jobs)
 	job* tmpJob=jobs;
 	pid_t childPid;
 
-	for(;tmpJob;tmpJob=tmpJob->next){
+	for(;tmpJob;popAndFreeJob(&tmpJob)){
 
 		// Test for conditions on previous commands !!! error==0 if no error...
 		if(tmpJob->condition  == AND && error){
@@ -221,6 +221,11 @@ jobLauncher(job* jobs)
 		}else if(tmpJob->condition == OR && !error){
 			return;
 		}
+		if(!(tmpJob->valid)){
+			error=1;
+			return;
+		}
+
 
 		if(tmpJob->background){
 			printf("We are in background mode! O_o\n");
