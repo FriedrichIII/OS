@@ -1,2 +1,12 @@
-apa
+Makefile
+shell
+shell.c
+shell.o
+str_replace.c
+str_replace.h
+str_replace.o
+task1_shell
 testinput
+testscript
+testscript~
+tmp

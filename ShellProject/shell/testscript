@@ -13,6 +13,7 @@ ls ; ls . ; ls . . . . ; echo foo ; echo foo bar moz ; echo moz
 echo --------starting redirections-----------
 
 wc < testinput
+cd ..
 echo mamba > tmp/testout
 wc < testinput > tmp/testout
 echo mambo > tmp/testout
