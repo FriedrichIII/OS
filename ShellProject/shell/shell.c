@@ -433,7 +433,7 @@ process(char *line)
 		 * p points at the following character of line
 		 */
 
-		if (!isblank(ch) && !ch) {
+		if (!isblank(ch) && ch) {
 			if(!currentJob) {
 				currentJob = newJob(condition, inPipe);
 				previousJob->next = currentJob;
