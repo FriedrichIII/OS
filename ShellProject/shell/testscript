@@ -41,17 +41,18 @@ echo foo | md5sum && echo moh
 false || echo foo | md5sum || echo moh
 # background
 echo bar ; false & ; status
+
 sleep 1 & echo foo
 sleep 4 && echo moo & ; echo bar
 echo foo > tmp/testout && sleep 4 && echo moo > tmp/testout & sleep 2 && cat < tmp/testout && sleep 6 && cat tmp/testout
 sleep 5 &
-sleep 10
-ls > apa
-wc -w < apa
+sleep 2
+ls > tmp/apa
+wc -w < tmp/apa
 ls /usr/bin | sort -r | sort | sort -r
 yes > /dev/null
 ˆC (control-C)
-cat < apa | wc | wc > bepa
+cat < tmp/apa | wc | wc > bepa
 cat bepa
 cd /tmp && ls -Fal
 cd /tmp/unknown || mkdir /tmp/unknown

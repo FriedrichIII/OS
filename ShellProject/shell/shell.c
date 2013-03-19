@@ -51,13 +51,13 @@ builtin_cd(int argc, char **argv) {
 		status = 1;
 	} else if (argc == 2) {
 		if(strchr(argv[1], '~')) {
-			/*
+
 			printf("true\n");
 			char* rep = str_replace(argv[1], "~", getenv("HOME"));
 			status = chdir(rep);
 			free(rep);
 			rep = NULL;
-			*/
+
 		} else {
 			status = chdir(argv[1]);
 		}
@@ -72,7 +72,7 @@ builtin_cd(int argc, char **argv) {
 				fprintf (stderr, "%s is not a directory.\n", argv[1]);
 				break;
 			default:
-				perror("Error ");
+				perror("Error \n");
 				break;
 		}
 		return(1);
@@ -510,6 +510,7 @@ main(void)
 		printf("Error while setting Ctrl-C handler\n");
 	}
 
+// uncomment to run the testscript
 //	int testscriptfd = open("testscript", O_RDONLY);
 //	dup2(testscriptfd, STDIN_FILENO);
 
