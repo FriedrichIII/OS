@@ -547,8 +547,6 @@ process(char *line)
 					 * RUN_COMMAND(second with output from first);
 					 */
 
-
-
 					break;
 			}
 			break;
