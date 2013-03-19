@@ -435,7 +435,7 @@ process(char *line)
 
 		if (!isblank(ch) && !ch) {
 			if(!currentJob) {
-				currentJob = newJob(cond, inPipe);
+				currentJob = newJob(condition, inPipe);
 				previousJob->next = currentJob;
 				condition = NONE;
 				inPipe = STDIN_FILENO;
