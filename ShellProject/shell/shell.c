@@ -141,7 +141,7 @@ printCwd() {
 }
 
 /* Creates a default new job */
-job * newJob(void) {
+job * defaultJob(void) {
 	job* nJob;
 
 	if(!(nJob = malloc(sizeof(job)))) {
@@ -152,7 +152,7 @@ job * newJob(void) {
 	nJob->next=NULL;
 	nJob->in = STDIN_FILENO;
 	nJob->out = STDOUT_FILENO;
-	nJob->valid = 1;
+	nJob->valid = 0;
 
 	return nJob;
 }
@@ -167,9 +167,8 @@ job * newJob(void) {
  * @param inputRedirection indicates if the if the redirection is on the input (1) or the output (0)
  * @param parsed the parsed chain of word to use in the method*/
 void
-storeParsed(job **currentJob, int parsingCommand, int inputRedirection, char **parsed )
+storeParsed(job *currentJob, int parsingCommand, int inputRedirection, char **parsed )
 {
-	if (!(*currentJob)) *currentJob = newJob();
 
 	job *localJob = *currentJob;
 
@@ -360,19 +359,23 @@ process(char *line)
 	 * harg: points on the first word of the chain that will be stored in currentJob */
 
 	char *args[100], **narg, **harg;
-	/* currentJob: points on last completly created job
-	 * currentJob->next: job being created
+	/* previous: points on last completly created job
+	 * currentJob: job being created
 	 * jobs: empty job used as head of the list => call jobLauncher(jobs->next);*/
-	job *currentJob, *jobs;
+	job *currentJob, *previousJob, *jobs;
 	int pip[2];
 	/* parsingCommand=1 when parsing a shell command,
 	 * parsingCommand=0 when parsing a redirection.*/
-	int parsingCommand;
+	int parsingCommand = 1;
 
 	/* inputRedirection=1 when parsing an input redirection "<"
 	 * inputRedireciton=0 when parsing an output redirection ">"
 	 * inputRedirection=unspecified when parsing a command*/
-	int inputRedirection;
+	int inputRedirection = 0;
+
+	/* stores the informations to add to the next job*/
+	int condition = NONE;
+	int inPipe = STDIN_FILENO;
 
 	p = line;
 
@@ -381,13 +384,9 @@ process(char *line)
 	*narg = NULL;
 
 	/*initialises new job list*/
-	jobs = newJob();
-
-	currentJob = jobs;
-
-	/*"remebers" if parse a redirection or a command*/
-	parsingCommand=1;
-	inputRedirection = 0;
+	jobs = defaultJob();
+	previousJob = jobs;
+	currentJob = previousJob->next;
 
 	for (; *p != 0; p != line && p++) {
 		word = parseword(&p);
@@ -413,7 +412,11 @@ process(char *line)
 		case '\t': break;
 		case '>':
 			printf("Ah, we have redirection!\n");
-			storeParsed(&(currentJob->next), parsingCommand, inputRedirection, harg);
+			if(!currentJob) {
+				currentJob = newJob(cond, inPipe);
+				previousJob->next = currentJob;
+			}
+			storeParsed(currentJob, parsingCommand, inputRedirection, harg);
 			parsingCommand = 0;
 			inputRedirection = 0;
 			narg++;
@@ -428,8 +431,13 @@ process(char *line)
 		case ';':
 
 			printf("End of command, running instruction\n");
-			storeParsed(&(currentJob->next), parsingCommand, inputRedirection, harg);
-			currentJob = currentJob->next;
+			if (!currentJob) {
+				currentJob = newJob(cond, inPipe);
+				previousJob->next = currentJob;
+			}
+			storeParsed(currentJob, parsingCommand, inputRedirection, harg);
+			previousJob = previousJob->next;
+			currentJob = NULL;
 			parsingCommand = 1;
 			narg++;
 			*narg=NULL;
@@ -443,8 +451,8 @@ process(char *line)
 				case '&':
 					printf("&& instruction. If run first fail, don't run second and return fail.\n");
 					storeParsed(&(currentJob->next), parsingCommand, inputRedirection, harg);
-					currentJob->condition = AND;
 					currentJob = currentJob->next;
+					currentJob->condition = AND;
 					parsingCommand = 1;
 					narg++;
 					*narg=NULL;
@@ -460,6 +468,7 @@ process(char *line)
 				default:
 					printf("running instruction in background\n");
 					storeParsed(&(currentJob->next), parsingCommand, inputRedirection, harg);
+					currentJob = currentJob->next;
 					currentJob->background = 1;
 					parsingCommand = 1;
 					narg++;
@@ -478,6 +487,7 @@ process(char *line)
 				case '|':
 					printf("|| instruction. if run first succeed, don't run second and return success.\n");
 					storeParsed(&(currentJob->next), parsingCommand, inputRedirection, harg);
+					currentJob = currentJob->next;
 					currentJob->condition = OR;
 					narg++;
 					*narg=NULL;
@@ -499,7 +509,7 @@ process(char *line)
 						fprintf(stderr, "pipe error, commands will be executed independently.\n");
 					} else {
 						currentJob->out = pip[1];
-						currentJob->next = newJob();
+						currentJob->next = defaultJob();
 						currentJob->next->in = pip[0];
 					}
 					parsingCommand = 1;
