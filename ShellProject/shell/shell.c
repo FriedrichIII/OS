@@ -86,7 +86,7 @@ int builtin_exit(int argc, char **argv) {
 }
 
 int builtin_status(int argc, char **argv) {
-	fprintf(stderr,"Status of the last command executed : %d\n", error);
+	printf("%d");
 	/*int i;
 	printf("arglist:\n");
 	for (i=0; argv[i]!=NULL; i++){
@@ -129,7 +129,6 @@ run_builtin(char **args)
 }
 
 /* add your code here */
-
 
 
 
@@ -272,7 +271,7 @@ jobLauncher(job* jobs)
 				fprintf(stderr,"JobLauncher failed miserably to fork process O_o\n");
 				exit(1);
 
-			}else if(childPid== 0){
+			}else if(childPid == 0){
 				// Code only executed by the child
 
 				dup2(tmpJob->in, STDIN_FILENO);
@@ -325,7 +324,7 @@ jobLauncher(job* jobs)
 					signal(SIGINT, SIG_DFL);
 
 					if(run_builtin(tmpJob->cmd)){
-						fprintf(stderr, "child %d : builtin executed!\n");
+						fprintf(stderr, "child %d : builtin executed!\n", childPid);
 						error=0;
 					}else if(execvp(*(tmpJob->cmd), tmpJob->cmd)){
 						fprintf(stderr,"child %d : shell function failed!\n", childPid);
