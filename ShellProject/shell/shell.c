@@ -522,6 +522,9 @@ main(void)
 	char line[1000];
 	char *res;
 
+
+
+
 	for (;;) {
 		printCwd();
 
