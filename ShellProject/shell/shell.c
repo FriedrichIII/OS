@@ -212,7 +212,7 @@ jobLauncher(job* jobs)
 	job* tmpJob=jobs;
 	pid_t childPid;
 
-	for(;tmpJob;tmpJob=jobs->next){
+	for(;tmpJob;tmpJob=tmpJob->next){
 
 		// Test for conditions on previous commands !!! error==0 if no error...
 		if(tmpJob->condition  == AND && error){
@@ -243,10 +243,15 @@ jobLauncher(job* jobs)
 					if(execv(*(tmpJob->cmd), tmpJob->cmd)){
 						printf("shell function executed!\n");
 						error=0;
+
 					}else{
 						printf("shell function failed!\n");
+						error=1;
+
 					}
 				}
+				exit(error);
+
 
 			}else{
 				// Code only executed by parent process
@@ -275,10 +280,12 @@ jobLauncher(job* jobs)
 						error=0;
 					}else{
 						printf("shell function failed!\n");
+						error=1;
 					}
-
+					exit(error);
 				}else{
 					// Code only executed by parent process
+					printf("parent waiting on child\n");
 					waitpid(-1, &childPid, 0 );
 				}
 			}
