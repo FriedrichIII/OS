@@ -146,7 +146,7 @@ printCwd() {
 job* newJob(cond condition, int inPipe) {
 	job* nJob = NULL;
 	if (!(nJob = malloc(sizeof(job)))) {
-		printf(stderr, "Memory allocation error when creating job, exiting.\n");
+		fprintf(stderr, "Memory allocation error when creating job, exiting.\n");
 		exit(EXIT_FAILURE);
 	} else {
 		nJob->cmd = NULL;
@@ -266,7 +266,7 @@ jobLauncher(job* jobs)
 		}
 
 		if(tmpJob->background){
-			printf("We are in background mode! O_o\n");
+			//printf("We are in background mode! O_o\n");
 			if((childPid=fork()) < 0 ){
 				fprintf(stderr,"JobLauncher failed miserably to fork process O_o\n");
 				exit(1);
@@ -279,21 +279,21 @@ jobLauncher(job* jobs)
 
 				if (run_builtin(tmpJob->cmd)){
 
-					fprintf(stderr,"background : builtin executed!\n");
+				//	fprintf(stderr,"background : builtin executed!\n");
 
 				}else{
 					if(execvp(*(tmpJob->cmd), tmpJob->cmd)){
-						fprintf(stderr,"background : shell function failed!\n");
+						//fprintf(stderr,"background : shell function failed!\n");
 						error=1;
 
 
 					}else{
-						fprintf(stderr,"background : shell function executed!\n");
+						//fprintf(stderr,"background : shell function executed!\n");
 						error=0;
 					}
 				}
 
-				fprintf(stderr,"background : child %d", childPid);
+				//fprintf(stderr,"background : child %d", childPid);
 
 				exit(error);
 
@@ -305,10 +305,10 @@ jobLauncher(job* jobs)
 		}else{
 
 			if (tmpJob->in == STDIN_FILENO && tmpJob->out == STDOUT_FILENO && run_builtin(tmpJob->cmd)){
-					fprintf(stderr, "builtin executed!\n");
+					//fprintf(stderr, "builtin executed!\n");
 			}else{
 				if((childPid=fork()) < 0 ){
-						fprintf(stderr, "JobLauncher failed miserably to fork process O_o\n");
+						//fprintf(stderr, "JobLauncher failed miserably to fork process O_o\n");
 						exit(1);
 
 				}else if(childPid == 0){
@@ -324,17 +324,17 @@ jobLauncher(job* jobs)
 					signal(SIGINT, SIG_DFL);
 
 					if(run_builtin(tmpJob->cmd)){
-						fprintf(stderr, "child %d : builtin executed!\n", childPid);
+						//fprintf(stderr, "child %d : builtin executed!\n", childPid);
 						error=0;
 					}else if(execvp(*(tmpJob->cmd), tmpJob->cmd)){
-						fprintf(stderr,"child %d : shell function failed!\n", childPid);
+						//fprintf(stderr,"child %d : shell function failed!\n", childPid);
 						error=1;
 					}else{
 
-						fprintf(stderr,"child %d : shell function executed!\n", childPid);
+						//fprintf(stderr,"child %d : shell function executed!\n", childPid);
 						error=0;
 					}
-					fprintf(stderr,"child %d : exiting\n", childPid);
+					//fprintf(stderr,"child %d : exiting\n", childPid);
 					exit(error);
 				}else{
 					// Code only executed by parent process
@@ -342,9 +342,9 @@ jobLauncher(job* jobs)
 					dup2(stdinCopy, STDIN_FILENO);
 					dup2(stdoutCopy, STDOUT_FILENO);
 
-					printf("parent %d : waiting on child %d\n", getpid(),childPid);
+					//printf("parent %d : waiting on child %d\n", getpid(),childPid);
 					waitpid(childPid, &error, 0 );
-					printf("parent %d : finished waiting on child %d\n",getpid(),childPid);
+					//printf("parent %d : finished waiting on child %d\n",getpid(),childPid);
 				}
 			}
 		}
