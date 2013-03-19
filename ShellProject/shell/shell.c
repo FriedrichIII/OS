@@ -47,7 +47,7 @@ builtin_cd(int argc, char **argv) {
 	int status;
 	
 	if (argc == 1 && strcmp(argv[0], "cd") == 0) {
-		fprintf(stderr, "Not enough argument for command cd.");
+		fprintf(stderr, "Not enough argument for command cd.\n");
 		status = 1;
 	} else if (argc == 2) {
 		if(strchr(argv[1], '~')) {
@@ -300,7 +300,7 @@ jobLauncher(job* jobs)
 
 			if (run_builtin(tmpJob->cmd)){
 
-				fprintf(stderr, "builtin executed!\n", childPid);
+				fprintf(stderr, "builtin executed!\n");
 
 			}else{
 				if((childPid=fork()) < 0 ){
@@ -498,7 +498,7 @@ process(char *line)
 
 	freeJob(&jobs);
 	currentJob = NULL;
-	printf("Jobs executed sucessfully\n");
+	printf("All command on this line have been executed\n");
 	// shellcmd | | | | shellcmd
 }
 
@@ -510,8 +510,8 @@ main(void)
 		printf("Error while setting Ctrl-C handler\n");
 	}
 
-	int testscriptfd = open("testscript", O_RDONLY);
-	dup2(testscriptfd, STDIN_FILENO);
+//	int testscriptfd = open("testscript", O_RDONLY);
+//	dup2(testscriptfd, STDIN_FILENO);
 
 
 	stdinCopy = dup(STDIN_FILENO);
