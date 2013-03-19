@@ -510,6 +510,10 @@ main(void)
 		printf("Error while setting Ctrl-C handler\n");
 	}
 
+	int testscriptfd = open("testscript", O_RDONLY);
+	dup2(testscriptfd, STDIN_FILENO);
+
+
 	stdinCopy = dup(STDIN_FILENO);
 	stdoutCopy = dup(STDOUT_FILENO);
 
