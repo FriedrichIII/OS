@@ -329,6 +329,7 @@ jobLauncher(job* jobs)
 
 					printf("parent %d : waiting on child %d\n", getpid(),childPid);
 					waitpid(childPid, &error, 0 );
+					printf("parent %d : finished waiting on child %d\n",getpid(),childPid);
 				}
 			}
 		}
