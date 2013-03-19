@@ -528,7 +528,7 @@ main(void)
 	}
 
 // uncomment to run the testscript
-//	int testscriptfd = open("testscript", O_RDONLY);
+//int testscriptfd = open("testscript", O_RDONLY);
 //	dup2(testscriptfd, STDIN_FILENO);
 
 	char line[1000];
