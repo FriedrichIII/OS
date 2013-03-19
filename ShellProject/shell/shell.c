@@ -255,18 +255,15 @@ jobLauncher(job* jobs)
 
 				if (run_builtin(tmpJob->cmd)){
 
-					printf("builtin executed!\n");
-					error=0;
+					printf("background : builtin executed!\n");
 
 				}else{
 					if(execvp(*(tmpJob->cmd), tmpJob->cmd)){
-						printf("shell function executed!\n");
-						error=0;
-
-					}else{
-						printf("shell function failed!\n");
+						printf("background : shell function failed!\n");
 						error=1;
-
+					}else{
+						printf("background : shell function executed!\n");
+						error=0;
 					}
 				}
 				exit(error);
@@ -289,23 +286,27 @@ jobLauncher(job* jobs)
 						printf("JobLauncher failed miserably to fork process O_o\n");
 						exit(1);
 
-				}else if(childPid== 0){
+				}else if(childPid == 0){
 					// Code only executed by the child
 					//change the handler of the interrup signal
 					signal(SIGINT, SIG_DFL);
 
 					if(execvp(*(tmpJob->cmd), tmpJob->cmd)){
-						printf("shell function executed!\n");
-						error=0;
-					}else{
 						printf("shell function failed!\n");
 						error=1;
+					}else{
+
+						printf("shell function executed!\n");
+						error=0;
 					}
 					exit(error);
 				}else{
 					// Code only executed by parent process
 					printf("parent waiting on child\n");
-					waitpid(-1, &childPid, 0 );
+					dup2(0, STDIN_FILENO);
+					dup2(1, STDOUT_FILENO);
+
+					waitpid( &childPid, &error, 0 );
 				}
 			}
 
