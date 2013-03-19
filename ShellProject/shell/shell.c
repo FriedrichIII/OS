@@ -516,10 +516,15 @@ process(char *line)
 			storeParsed(&currentJob, parsingCommand, inputRedirection, harg);
 			parsingCommand = 1;
 			harg = narg;
+			currentJob = currentJob->next;
 			/*RUN_COMMAND();*/
 			break;
 		case '#':
 			*(p+1)=0;
+			break;
+		case 0:
+			printf("empty line.\n");
+			/*empty line?*/
 			break;
 		default:
 			fprintf(stderr, "internal unexpected error, exiting\n");
@@ -527,11 +532,6 @@ process(char *line)
 			break;
 		}
 	} // end for
-
-	if (currentJob==jobs) {
-		freeJob(&jobs);
-		currentJob = NULL;
-	}
 
 	// launchJobs(jobs)
 	jobLauncher(jobs);
