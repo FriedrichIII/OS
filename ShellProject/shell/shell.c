@@ -72,7 +72,7 @@ builtin_cd(int argc, char **argv) {
 				fprintf (stderr, "%s is not a directory.\n", argv[1]);
 				break;
 			default:
-				perror("Error \n");
+				perror("Error ");
 				break;
 		}
 		return(1);
@@ -86,7 +86,7 @@ int builtin_exit(int argc, char **argv) {
 }
 
 int builtin_status(int argc, char **argv) {
-	printf("%d");
+	printf("%d\n", error);
 	/*int i;
 	printf("arglist:\n");
 	for (i=0; argv[i]!=NULL; i++){
@@ -528,8 +528,7 @@ process(char *line)
 	freeJob(&jobs);
 	currentJob = NULL;
 	previousJob = NULL;
-	//printf("All command on this line have been executed\n");
-	// shellcmd | | | | shellcmd
+//	printf("All command on this line have been executed\n");
 }
 
 int
@@ -557,7 +556,7 @@ main(void)
 		if (res == NULL)
 			break;
 
-		//printf("Executing: %s", line);
+//		printf("Executing: %s", line);
 		process(line);
 	}
 
