@@ -528,7 +528,7 @@ process(char *line)
 	freeJob(&jobs);
 	currentJob = NULL;
 	previousJob = NULL;
-	printf("All command on this line have been executed\n");
+	//printf("All command on this line have been executed\n");
 	// shellcmd | | | | shellcmd
 }
 
@@ -557,7 +557,7 @@ main(void)
 		if (res == NULL)
 			break;
 
-		printf("Executing: %s", line);
+		//printf("Executing: %s", line);
 		process(line);
 	}
 
