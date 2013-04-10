@@ -1,3 +1,0 @@
-kernel/crypto/rng.ko
-kernel/crypto/krng.ko
-kernel/crypto/ansi_cprng.ko

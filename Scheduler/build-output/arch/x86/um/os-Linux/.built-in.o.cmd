@@ -1,1 +1,0 @@
-cmd_arch/x86/um/os-Linux/built-in.o :=  ld  -m elf_x86_64   -r -o arch/x86/um/os-Linux/built-in.o arch/x86/um/os-Linux/registers.o arch/x86/um/os-Linux/task_size.o arch/x86/um/os-Linux/mcontext.o arch/x86/um/os-Linux/prctl.o 

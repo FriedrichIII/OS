@@ -1,1 +1,0 @@
-cmd_arch/um/kernel/skas/built-in.o :=  ld  -m elf_x86_64   -r -o arch/um/kernel/skas/built-in.o arch/um/kernel/skas/clone.o arch/um/kernel/skas/mmu.o arch/um/kernel/skas/process.o arch/um/kernel/skas/syscall.o arch/um/kernel/skas/uaccess.o 

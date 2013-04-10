@@ -1,1 +1,0 @@
-cmd_drivers/net/tun.ko := ld -r  -m elf_x86_64 -T /home/valerian/Documents/ba6/OS/repo/Scheduler/linux-3.8.3/scripts/module-common.lds --build-id  -o drivers/net/tun.ko drivers/net/tun.o drivers/net/tun.mod.o
