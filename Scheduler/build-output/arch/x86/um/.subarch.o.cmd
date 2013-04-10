@@ -1,0 +1,1 @@
+cmd_arch/x86/um/subarch.o := ld  -m elf_x86_64   -r -o arch/x86/um/subarch.o arch/x86/um/../lib/csum-partial_64.o arch/x86/um/../lib/memcpy_64.o arch/x86/um/../lib/thunk_64.o arch/x86/um/../lib/rwsem.o arch/x86/um/../kernel/module.o 

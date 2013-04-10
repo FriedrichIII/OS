@@ -1,0 +1,6 @@
+kernel/fs/mbcache.ko
+kernel/fs/ext4/ext4.ko
+kernel/fs/hostfs/hostfs.ko
+kernel/fs/jbd2/jbd2.ko
+kernel/fs/nls/nls_base.ko
+kernel/fs/reiserfs/reiserfs.ko

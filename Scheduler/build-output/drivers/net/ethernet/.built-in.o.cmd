@@ -1,0 +1,1 @@
+cmd_drivers/net/ethernet/built-in.o :=  ld  -m elf_x86_64   -r -o drivers/net/ethernet/built-in.o drivers/net/ethernet/8390/built-in.o drivers/net/ethernet/intel/built-in.o drivers/net/ethernet/i825xx/built-in.o drivers/net/ethernet/marvell/built-in.o drivers/net/ethernet/natsemi/built-in.o 
