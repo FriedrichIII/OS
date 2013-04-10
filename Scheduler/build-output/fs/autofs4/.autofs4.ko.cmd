@@ -1,0 +1,1 @@
+cmd_fs/autofs4/autofs4.ko := ld -r  -m elf_x86_64 -T /home/valerian/Documents/ba6/OS/repo/Scheduler/linux-3.8.3/scripts/module-common.lds --build-id  -o fs/autofs4/autofs4.ko fs/autofs4/autofs4.o fs/autofs4/autofs4.mod.o
