@@ -9,7 +9,7 @@
  * is 100ms. Both parameters can be tuned from /proc/sys/kernel.
  */
 
-#define DUMMY_TIMESLICE		(100 * HZ / 1000) /* do we need to remove hz?*/
+#define DUMMY_TIMESLICE		(100 * HZ / 1000)
 #define DUMMY_AGE_THRESHOLD	(3 * DUMMY_TIMESLICE)
 
 unsigned int sysctl_sched_dummy_timeslice = DUMMY_TIMESLICE;
@@ -70,9 +70,43 @@ static void dequeue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 	_dequeue_task_dummy(p);
 	dec_nr_running(rq);
 }
+//TODO adapt this to RR----------------------------------
+/*
+ * Put task to the head or the end of the run list without the overhead of
+ * dequeue followed by enqueue.
+ */
+static void
+requeue_dummy_entity(struct dummy_rq *dummy_rq, struct sched_dummy_entity *dummy_se, int head)
+{
+	/*
+	if (on_rt_rq(rt_se)) {
+		struct rt_prio_array *array = &rt_rq->active;
+		struct list_head *queue = array->queue + rt_se_prio(rt_se);
+
+		if (head)
+			list_move(&rt_se->run_list, queue);
+		else
+			list_move_tail(&rt_se->run_list, queue);
+	}*/
+}
+
+static void requeue_task_dummy(struct rq *rq, struct task_struct *p, int head)
+{
+	struct sched_rt_entity *rt_se = &p->rt;
+	struct rt_rq *rt_rq;
+
+	for_each_sched_rt_entity(rt_se) {
+		rt_rq = rt_rq_of_se(rt_se);
+		requeue_rt_entity(rt_rq, rt_se, head);
+	}
+}
+//---------------------------------------
 
 static void yield_task_dummy(struct rq *rq)
 {
+	//We remove the task from the list and enqueue it again
+	requeue_task_dummy(rq, rq->curr, 0);
+
 }
 
 static void check_preempt_curr_dummy(struct rq *rq, struct task_struct *p, int flags)
@@ -114,6 +148,8 @@ static void switched_to_dummy(struct rq *rq, struct task_struct *p)
 
 static void prio_changed_dummy(struct rq *rq, struct task_struct *p, int oldprio)
 {
+
+
 }
 
 static unsigned int get_rr_interval_dummy(struct rq *rq, struct task_struct *p)

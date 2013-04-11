@@ -323,8 +323,10 @@ struct rt_rq {
 #endif
 };
 
+// TODO implement dummy rq
 struct dummy_rq {
 	struct list_head queue;
+
 };
 
 #ifdef CONFIG_SMP
