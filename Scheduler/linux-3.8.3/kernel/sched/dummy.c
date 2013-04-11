@@ -9,7 +9,7 @@
  * is 100ms. Both parameters can be tuned from /proc/sys/kernel.
  */
 
-#define DUMMY_TIMESLICE		(100 * HZ / 1000)
+#define DUMMY_TIMESLICE		(100 * HZ / 1000) /* do we need to remove hz?*/
 #define DUMMY_AGE_THRESHOLD	(3 * DUMMY_TIMESLICE)
 
 unsigned int sysctl_sched_dummy_timeslice = DUMMY_TIMESLICE;
@@ -145,4 +145,3 @@ const struct sched_class dummy_sched_class = {
 
 	.get_rr_interval    = get_rr_interval_dummy,
 };
-
