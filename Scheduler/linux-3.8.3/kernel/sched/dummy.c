@@ -92,13 +92,14 @@ requeue_dummy_entity(struct dummy_rq *dummy_rq, struct sched_dummy_entity *dummy
 
 static void requeue_task_dummy(struct rq *rq, struct task_struct *p, int head)
 {
+	/*
 	struct sched_rt_entity *rt_se = &p->rt;
 	struct rt_rq *rt_rq;
 
 	for_each_sched_rt_entity(rt_se) {
 		rt_rq = rt_rq_of_se(rt_se);
 		requeue_rt_entity(rt_rq, rt_se, head);
-	}
+	}*/
 }
 //---------------------------------------
 
