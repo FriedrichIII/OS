@@ -59,9 +59,31 @@ static inline void _dequeue_task_dummy(struct task_struct *p)
  * Scheduling class functions to implement
  */
 
+static void
+enqueue_dummy_entity(){
+
+}
+
 static void enqueue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 {
 	_enqueue_task_dummy(rq, p);
+	struct sched_dummy_entity *dummy_se= &p->dummy_se;
+
+	enqueue_dummy_entity(dummy_se);
+
+	/*struct sched_rt_entity *rt_se = &p->rt;
+
+		if (flags & ENQUEUE_WAKEUP)
+			rt_se->timeout = 0;
+
+		enqueue_rt_entity(rt_se, flags & ENQUEUE_HEAD);
+
+		if (!task_current(rq, p) && p->nr_cpus_allowed > 1)
+			enqueue_pushable_task(rq, p);
+
+		inc_nr_running(rq);*/
+
+
 	inc_nr_running(rq);
 }
 
@@ -78,6 +100,7 @@ static void dequeue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 static void
 requeue_dummy_entity(struct dummy_rq *dummy_rq, struct sched_dummy_entity *dummy_se, int head)
 {
+
 	/*
 	if (on_rt_rq(rt_se)) {
 		struct rt_prio_array *array = &rt_rq->active;
