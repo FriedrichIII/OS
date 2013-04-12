@@ -11,6 +11,13 @@
 
 #define DUMMY_TIMESLICE		(100 * HZ / 1000)
 #define DUMMY_AGE_THRESHOLD	(3 * DUMMY_TIMESLICE)
+#define HIGHEST_PRIORITY 15
+#define PRIORITY_RANGE 5
+#define PRIO1 15
+#define PRIO2 16
+#define PRIO3 17
+#define PRIO4 18
+#define PRIO5 19
 
 unsigned int sysctl_sched_dummy_timeslice = DUMMY_TIMESLICE;
 static inline unsigned int get_timeslice()
@@ -30,7 +37,13 @@ static inline unsigned int get_age_threshold()
 
 void init_dummy_rq(struct dummy_rq *dummy_rq, struct rq *rq)
 {
-	INIT_LIST_HEAD(&dummy_rq->queue);
+	//INIT_LIST_HEAD(&dummy_rq->queue);
+
+	INIT_LIST_HEAD(&dummy_rq->queueP15);
+	INIT_LIST_HEAD(&dummy_rq->queueP16);
+	INIT_LIST_HEAD(&dummy_rq->queueP17);
+	INIT_LIST_HEAD(&dummy_rq->queueP18);
+	INIT_LIST_HEAD(&dummy_rq->queueP19);
 }
 
 /*
@@ -42,11 +55,14 @@ static inline struct task_struct *dummy_task_of(struct sched_dummy_entity *dummy
 	return container_of(dummy_se, struct task_struct, dummy_se);
 }
 
+// Unused
 static inline void _enqueue_task_dummy(struct rq *rq, struct task_struct *p)
 {
+/*
 	struct sched_dummy_entity *dummy_se = &p->dummy_se;
         struct list_head *queue = &rq->dummy.queue;
         list_add_tail(&dummy_se->run_list, queue);
+*/
 }
 
 static inline void _dequeue_task_dummy(struct task_struct *p)
@@ -59,9 +75,69 @@ static inline void _dequeue_task_dummy(struct task_struct *p)
  * Scheduling class functions to implement
  */
 
-static void enqueue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
+static void
+enqueue_dummy_entity(struct sched_dummy_entity* dummy_se){
+		
+
+}
+
+static void 
+enqueue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 {
-	_enqueue_task_dummy(rq, p);
+	//_enqueue_task_dummy(rq, p);
+
+	struct sched_dummy_entity *dummy_se= &p->dummy_se;
+
+	struct list_head* queue;
+	// TODO check the prio values used	
+	// put the given task in the right priority queue	
+
+	int totalPriority = p->prio - dummy_se->priorityIncrement;
+	
+	if (totalPriority < HIGHEST_PRIORITY){
+		totalPriority = HIGHEST_PRIORITY;
+	}
+
+	switch (totalPriority){
+		case PRIO1 : queue = &rq->dummy.queueP15;	
+			break;
+		case PRIO2 : queue = &rq->dummy.queueP16;
+			break;
+		case PRIO3 : queue = &rq->dummy.queueP17;
+			break;
+		case PRIO4 : queue = &rq->dummy.queueP18;
+			break;
+		case PRIO5 : queue = &rq->dummy.queueP19;
+			break;
+		default :
+			break;
+			// TODO : put something here to detect the error	
+		
+	}
+	list_add_tail(&dummy_se->run_list, queue);
+
+	//TODO we need to verify if we should preempt a task
+	int currentTaskPriority=rq->curr.prio-rq->curr->dummy_se.priorityIncrement;
+
+	if(currentTaskPriority>totalPriority){
+		resched_task(rq->curr);
+	}
+	
+	//enqueue_dummy_entity(dummy_se);
+
+	/*struct sched_rt_entity *rt_se = &p->rt;
+
+		if (flags & ENQUEUE_WAKEUP)
+			rt_se->timeout = 0;
+
+		enqueue_rt_entity(rt_se, flags & ENQUEUE_HEAD);
+
+		if (!task_current(rq, p) && p->nr_cpus_allowed > 1)
+			enqueue_pushable_task(rq, p);
+
+		*/
+
+
 	inc_nr_running(rq);
 }
 
@@ -78,6 +154,7 @@ static void dequeue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 static void
 requeue_dummy_entity(struct dummy_rq *dummy_rq, struct sched_dummy_entity *dummy_se, int head)
 {
+
 	/*
 	if (on_rt_rq(rt_se)) {
 		struct rt_prio_array *array = &rt_rq->active;
@@ -112,15 +189,47 @@ static void yield_task_dummy(struct rq *rq)
 
 static void check_preempt_curr_dummy(struct rq *rq, struct task_struct *p, int flags)
 {
+	//TODO ask if we need to use our own prio or the one from the task
+	
+	if (p->prio < rq->curr->prio) {
+		resched_task(rq->curr);
+		return;
+	}
+		
 }
 
-static struct task_struct *pick_next_task_dummy(struct rq *rq)
+}
+
+
+/*
+ * Returns the nonempty queue of highest prioriy
+ * from the given dummy_rq
+ */
+static struct list_head *
+higher_nonempty_queue(struct dummy_rq *dummy_rq)
+{
+	if (!list_empty(&dummy_rq->queueP15)) return &dummy_rq->queueP15;
+	if (!list_empty(&dummy_rq->queueP16)) return &dummy_rq->queueP16;
+	if (!list_empty(&dummy_rq->queueP17)) return &dummy_rq->queueP17;
+	if (!list_empty(&dummy_rq->queueP18)) return &dummy_rq->queueP18;
+	if (!list_empty(&dummy_rq->queueP19)) return &dummy_rq->queueP19;
+	return NULL;
+}
+
+/*
+ * Select the first task_struct of the higher priority nonempty
+ * queue of dummy_rq.
+ * returns NULL if no task_struct in any queue
+ */
+static struct task_struct *
+pick_next_task_dummy(struct rq *rq)
 {
 	struct dummy_rq *dummy_rq = &rq->dummy;
+	struct list_head *queue = higher_nonempty_queue(dummy_rq);
 	struct sched_dummy_entity *next;
 
-	if (!list_empty(&dummy_rq->queue)) {
-		next = list_first_entry(&dummy_rq->queue, struct sched_dummy_entity, run_list);
+	if (queue) {
+		next = list_first_entry(queue, struct sched_dummy_entity, run_list);
 		return dummy_task_of(next);
 	} else {
 		return NULL;
@@ -177,7 +286,6 @@ static void prio_changed_dummy(struct rq *rq, struct task_struct *p, int oldprio
 				resched_task(rq->curr);
 		} else
 			check_preempt_curr(rq, p, 0);
-
 
 }
 

@@ -324,8 +324,19 @@ struct rt_rq {
 };
 
 // TODO implement dummy rq
+/*the running queue specific to the dummy scheduler
+ * contains one queue per managed priority level 
+ */
+
 struct dummy_rq {
-	struct list_head queue;
+	//struct list_head queue;
+	
+	struct list_head queueP15;
+	struct list_head queueP16;
+	struct list_head queueP17;
+	struct list_head queueP18;
+	struct list_head queueP19;
+
 
 };
 
