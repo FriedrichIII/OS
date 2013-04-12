@@ -55,11 +55,14 @@ static inline struct task_struct *dummy_task_of(struct sched_dummy_entity *dummy
 	return container_of(dummy_se, struct task_struct, dummy_se);
 }
 
+// Unused
 static inline void _enqueue_task_dummy(struct rq *rq, struct task_struct *p)
 {
+/*
 	struct sched_dummy_entity *dummy_se = &p->dummy_se;
         struct list_head *queue = &rq->dummy.queue;
         list_add_tail(&dummy_se->run_list, queue);
+*/
 }
 
 static inline void _dequeue_task_dummy(struct task_struct *p)
@@ -73,7 +76,7 @@ static inline void _dequeue_task_dummy(struct task_struct *p)
  */
 
 static void
-enqueue_dummy_entity(sched_dummy_entity* dummy_se){
+enqueue_dummy_entity(struct sched_dummy_entity* dummy_se){
 		
 
 }
@@ -107,6 +110,7 @@ enqueue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 		case PRIO5 : queue = &rq->dummy.queueP19;
 			break;
 		default :
+			break;
 			// TODO : put something here to detect the error	
 		
 	}
@@ -196,13 +200,36 @@ static void check_preempt_curr_dummy(struct rq *rq, struct task_struct *p, int f
 
 }
 
-static struct task_struct *pick_next_task_dummy(struct rq *rq)
+
+/*
+ * Returns the nonempty queue of highest prioriy
+ * from the given dummy_rq
+ */
+static struct list_head *
+higher_nonempty_queue(struct dummy_rq *dummy_rq)
+{
+	if (!list_empty(&dummy_rq->queueP15)) return &dummy_rq->queueP15;
+	if (!list_empty(&dummy_rq->queueP16)) return &dummy_rq->queueP16;
+	if (!list_empty(&dummy_rq->queueP17)) return &dummy_rq->queueP17;
+	if (!list_empty(&dummy_rq->queueP18)) return &dummy_rq->queueP18;
+	if (!list_empty(&dummy_rq->queueP19)) return &dummy_rq->queueP19;
+	return NULL;
+}
+
+/*
+ * Select the first task_struct of the higher priority nonempty
+ * queue of dummy_rq.
+ * returns NULL if no task_struct in any queue
+ */
+static struct task_struct *
+pick_next_task_dummy(struct rq *rq)
 {
 	struct dummy_rq *dummy_rq = &rq->dummy;
+	struct list_head *queue = higher_nonempty_queue(dummy_rq);
 	struct sched_dummy_entity *next;
 
-	if (!list_empty(&dummy_rq->queue)) {
-		next = list_first_entry(&dummy_rq->queue, struct sched_dummy_entity, run_list);
+	if (queue) {
+		next = list_first_entry(queue, struct sched_dummy_entity, run_list);
 		return dummy_task_of(next);
 	} else {
 		return NULL;
