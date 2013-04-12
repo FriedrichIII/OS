@@ -88,7 +88,7 @@ enqueue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 
 	struct sched_dummy_entity *dummy_se= &p->dummy_se;
 
-	struct list_head* queue;
+	struct list_head* queue = NULL;
 	// TODO check the prio values used	
 	// put the given task in the right priority queue	
 
@@ -110,14 +110,16 @@ enqueue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 		case PRIO5 : queue = &rq->dummy.queueP19;
 			break;
 		default :
+			// TODO : put something here to detect the error
+					
 			break;
-			// TODO : put something here to detect the error	
+				
 		
 	}
 	list_add_tail(&dummy_se->run_list, queue);
 
 	//TODO we need to verify if we should preempt a task
-	int currentTaskPriority=rq->curr.prio-rq->curr->dummy_se.priorityIncrement;
+	int currentTaskPriority=(rq->curr->prio)-rq->curr->dummy_se.priorityIncrement;
 
 	if(currentTaskPriority>totalPriority){
 		resched_task(rq->curr);
@@ -196,8 +198,6 @@ static void check_preempt_curr_dummy(struct rq *rq, struct task_struct *p, int f
 		return;
 	}
 		
-}
-
 }
 
 
