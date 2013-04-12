@@ -3,3 +3,4 @@ build-output
 *.o
 Scheduler/linux-3.8.3/arch/um/os-Linux/start_up.c
 Scheduler/linux-3.8.3/arch/um/os-Linux/signal.c
+/Scheduler/Scheduler/
