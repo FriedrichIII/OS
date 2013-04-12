@@ -14,7 +14,7 @@ extern __read_mostly int scheduler_running;
  * and back.
  */
 #define NICE_TO_PRIO(nice)	(MAX_RT_PRIO + (nice) + 20)
-#define PRIO_TO_NICE(prio)	((prio) - MAX_RT_PRIO - 20)
+#define PRIO_TO_NICE(prio)	((prio) - MAX_RT_PRIO - 20)\\nstruct rt_prio_array
 #define TASK_NICE(p)		PRIO_TO_NICE((p)->static_prio)
 
 /*
