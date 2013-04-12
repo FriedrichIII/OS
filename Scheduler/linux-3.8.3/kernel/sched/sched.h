@@ -14,7 +14,7 @@ extern __read_mostly int scheduler_running;
  * and back.
  */
 #define NICE_TO_PRIO(nice)	(MAX_RT_PRIO + (nice) + 20)
-#define PRIO_TO_NICE(prio)	((prio) - MAX_RT_PRIO - 20)
+#define PRIO_TO_NICE(prio)	((prio) - MAX_RT_PRIO - 20)\\nstruct rt_prio_array
 #define TASK_NICE(p)		PRIO_TO_NICE((p)->static_prio)
 
 /*
@@ -324,8 +324,19 @@ struct rt_rq {
 };
 
 // TODO implement dummy rq
+/*the running queue specific to the dummy scheduler
+ * contains one queue per managed priority level 
+ */
+
 struct dummy_rq {
-	struct list_head queue;
+	//struct list_head queue;
+	
+	struct list_head queueP15;
+	struct list_head queueP16;
+	struct list_head queueP17;
+	struct list_head queueP18;
+	struct list_head queueP19;
+
 
 };
 

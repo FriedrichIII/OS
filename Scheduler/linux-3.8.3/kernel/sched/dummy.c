@@ -11,6 +11,13 @@
 
 #define DUMMY_TIMESLICE		(100 * HZ / 1000)
 #define DUMMY_AGE_THRESHOLD	(3 * DUMMY_TIMESLICE)
+#define HIGHEST_PRIORITY 15
+#define PRIORITY_RANGE 5
+#define PRIO1 15
+#define PRIO1 16
+#define PRIO1 17
+#define PRIO1 18
+#define PRIO1 19
 
 unsigned int sysctl_sched_dummy_timeslice = DUMMY_TIMESLICE;
 static inline unsigned int get_timeslice()
@@ -30,7 +37,13 @@ static inline unsigned int get_age_threshold()
 
 void init_dummy_rq(struct dummy_rq *dummy_rq, struct rq *rq)
 {
-	INIT_LIST_HEAD(&dummy_rq->queue);
+	//INIT_LIST_HEAD(&dummy_rq->queue);
+
+	INIT_LIST_HEAD(&dummy_rq->queueP15);
+	INIT_LIST_HEAD(&dummy_rq->queueP16);
+	INIT_LIST_HEAD(&dummy_rq->queueP17);
+	INIT_LIST_HEAD(&dummy_rq->queueP18);
+	INIT_LIST_HEAD(&dummy_rq->queueP19);
 }
 
 /*
@@ -60,16 +73,40 @@ static inline void _dequeue_task_dummy(struct task_struct *p)
  */
 
 static void
-enqueue_dummy_entity(){
+enqueue_dummy_entity(sched_dummy_entity* dummy_se){
+		
 
 }
 
-static void enqueue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
+static void 
+enqueue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 {
-	_enqueue_task_dummy(rq, p);
+	//_enqueue_task_dummy(rq, p);
+
 	struct sched_dummy_entity *dummy_se= &p->dummy_se;
 
-	enqueue_dummy_entity(dummy_se);
+	struct list_head* queue;
+	// TODO check the prio values used	
+	// put the given task in the right priority queue	
+
+	switch (p->prio){
+		case PRIO1 : queue = &rq->dummy.queueP15;
+				
+			break;
+		case PRIO2 : queue = &rq->dummy.queueP16;
+			break;
+		case PRIO3 : queue = &rq->dummy.queueP17;
+			break;
+		case PRIO4 : queue = &rq->dummy.queueP18;
+			break;
+		case PRIO5 : queue = &rq->dummy.queueP19;
+			break;
+		default :	
+		
+
+	}
+
+	//enqueue_dummy_entity(dummy_se);
 
 	/*struct sched_rt_entity *rt_se = &p->rt;
 
@@ -81,7 +118,7 @@ static void enqueue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 		if (!task_current(rq, p) && p->nr_cpus_allowed > 1)
 			enqueue_pushable_task(rq, p);
 
-		inc_nr_running(rq);*/
+		*/
 
 
 	inc_nr_running(rq);
