@@ -14,10 +14,10 @@
 #define HIGHEST_PRIORITY 15
 #define PRIORITY_RANGE 5
 #define PRIO1 15
-#define PRIO1 16
-#define PRIO1 17
-#define PRIO1 18
-#define PRIO1 19
+#define PRIO2 16
+#define PRIO3 17
+#define PRIO4 18
+#define PRIO5 19
 
 unsigned int sysctl_sched_dummy_timeslice = DUMMY_TIMESLICE;
 static inline unsigned int get_timeslice()
@@ -55,11 +55,14 @@ static inline struct task_struct *dummy_task_of(struct sched_dummy_entity *dummy
 	return container_of(dummy_se, struct task_struct, dummy_se);
 }
 
+// Unused
 static inline void _enqueue_task_dummy(struct rq *rq, struct task_struct *p)
 {
+/*
 	struct sched_dummy_entity *dummy_se = &p->dummy_se;
         struct list_head *queue = &rq->dummy.queue;
         list_add_tail(&dummy_se->run_list, queue);
+*/
 }
 
 static inline void _dequeue_task_dummy(struct task_struct *p)
@@ -73,7 +76,7 @@ static inline void _dequeue_task_dummy(struct task_struct *p)
  */
 
 static void
-enqueue_dummy_entity(sched_dummy_entity* dummy_se){
+enqueue_dummy_entity(struct sched_dummy_entity* dummy_se){
 		
 
 }
@@ -101,7 +104,8 @@ enqueue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 			break;
 		case PRIO5 : queue = &rq->dummy.queueP19;
 			break;
-		default :	
+		default :
+			break;
 		
 
 	}
@@ -174,6 +178,22 @@ static void check_preempt_curr_dummy(struct rq *rq, struct task_struct *p, int f
 {
 }
 
+
+/*
+ * Returns the nonempty queue of highest prioriy
+ * from the given dummy_rq
+ */
+static struct list_head *
+higher_nonempty_queue(struct dummy_rq *dummy_rq)
+{
+	if (!list_empty(&dummy_rq->queueP15)) return &dummy_rq->queueP15;
+	if (!list_empty(&dummy_rq->queueP16)) return &dummy_rq->queueP16;
+	if (!list_empty(&dummy_rq->queueP17)) return &dummy_rq->queueP17;
+	if (!list_empty(&dummy_rq->queueP18)) return &dummy_rq->queueP18;
+	if (!list_empty(&dummy_rq->queueP19)) return &dummy_rq->queueP19;
+	return NULL;
+}
+
 /*
  * Select the first task_struct of the higher priority nonempty
  * queue of dummy_rq.
@@ -192,21 +212,6 @@ pick_next_task_dummy(struct rq *rq)
 	} else {
 		return NULL;
 	}
-}
-
-/*
- * Returns the nonempty queue of highest prioriy
- * from the given dummy_rq
- */
-static struct list_head *
-higher_nonempty_queue(struct dummy_rq *dummy_rq)
-{
-	if (!list_empty(&dummy_rq->queueP15)) return &dummy_rq->queueP15;
-	if (!list_empty(&dummy_rq->queueP16)) return &dummy_rq->queueP16;
-	if (!list_empty(&dummy_rq->queueP17)) return &dummy_rq->queueP17;
-	if (!list_empty(&dummy_rq->queueP18)) return &dummy_rq->queueP18;
-	if (!list_empty(&dummy_rq->queueP19)) return &dummy_rq->queueP19;
-	return NULL;
 }
 
 static void put_prev_task_dummy(struct rq *rq, struct task_struct *prev)
