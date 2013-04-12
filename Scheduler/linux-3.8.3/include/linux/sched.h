@@ -1232,6 +1232,7 @@ struct sched_dummy_entity {
 	unsigned int priorityIncrement;
 	// the time in jiffy that the entity spent waiting in queues
 	unsigned int age;
+	// the dummy_rq.queueP1? in which the entity is contained
 	struct list_head run_list;
 };
 
