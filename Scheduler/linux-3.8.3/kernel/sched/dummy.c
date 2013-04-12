@@ -14,10 +14,10 @@
 #define HIGHEST_PRIORITY 15
 #define PRIORITY_RANGE 5
 #define PRIO1 15
-#define PRIO1 16
-#define PRIO1 17
-#define PRIO1 18
-#define PRIO1 19
+#define PRIO2 16
+#define PRIO3 17
+#define PRIO4 18
+#define PRIO5 19
 
 unsigned int sysctl_sched_dummy_timeslice = DUMMY_TIMESLICE;
 static inline unsigned int get_timeslice()
@@ -89,9 +89,14 @@ enqueue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 	// TODO check the prio values used	
 	// put the given task in the right priority queue	
 
-	switch (p->prio){
-		case PRIO1 : queue = &rq->dummy.queueP15;
-				
+	int totalPriority = p->prio - dummy_se->priorityIncrement;
+	
+	if (totalPriority < HIGHEST_PRIORITY){
+		totalPriority = HIGHEST_PRIORITY;
+	}
+
+	switch (totalPriority){
+		case PRIO1 : queue = &rq->dummy.queueP15;	
 			break;
 		case PRIO2 : queue = &rq->dummy.queueP16;
 			break;
@@ -101,11 +106,19 @@ enqueue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 			break;
 		case PRIO5 : queue = &rq->dummy.queueP19;
 			break;
-		default :	
+		default :
+			// TODO : put something here to detect the error	
 		
-
 	}
+	list_add_tail(&dummy_se->run_list, queue);
 
+	//TODO we need to verify if we should preempt a task
+	int currentTaskPriority=rq->curr.prio-rq->curr->dummy_se.priorityIncrement;
+
+	if(currentTaskPriority>totalPriority){
+		resched_task(rq->curr);
+	}
+	
 	//enqueue_dummy_entity(dummy_se);
 
 	/*struct sched_rt_entity *rt_se = &p->rt;
@@ -172,6 +185,15 @@ static void yield_task_dummy(struct rq *rq)
 
 static void check_preempt_curr_dummy(struct rq *rq, struct task_struct *p, int flags)
 {
+	//TODO ask if we need to use our own prio or the one from the task
+	
+	if (p->prio < rq->curr->prio) {
+		resched_task(rq->curr);
+		return;
+	}
+		
+}
+
 }
 
 static struct task_struct *pick_next_task_dummy(struct rq *rq)
@@ -209,7 +231,7 @@ static void switched_to_dummy(struct rq *rq, struct task_struct *p)
 
 static void prio_changed_dummy(struct rq *rq, struct task_struct *p, int oldprio)
 {
-
+	
 
 }
 
