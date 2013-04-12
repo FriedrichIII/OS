@@ -88,7 +88,7 @@ enqueue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 
 	struct sched_dummy_entity *dummy_se= &p->dummy_se;
 
-	struct list_head* queue;
+	struct list_head* queue = NULL;
 	// TODO check the prio values used	
 	// put the given task in the right priority queue	
 
@@ -110,15 +110,17 @@ enqueue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 		case PRIO5 : queue = &rq->dummy.queueP19;
 			break;
 		default :
+			// TODO : put something here to detect the error
+					
 			break;
-			// TODO : put something here to detect the error	
+				
 		
 	}
 	// list_add_tail does not need dummy_se->run_list to be initialized
 	list_add_tail(&dummy_se->run_list, queue);
 
 	//TODO we need to verify if we should preempt a task
-	int currentTaskPriority=rq->curr.prio-rq->curr->dummy_se.priorityIncrement;
+	int currentTaskPriority=(rq->curr->prio)-rq->curr->dummy_se.priorityIncrement;
 
 	if(currentTaskPriority>totalPriority){
 		resched_task(rq->curr);
@@ -199,8 +201,6 @@ static void check_preempt_curr_dummy(struct rq *rq, struct task_struct *p, int f
 		
 }
 
-}
-
 
 /*
  * Returns the nonempty queue of highest prioriy
@@ -259,7 +259,34 @@ static void switched_to_dummy(struct rq *rq, struct task_struct *p)
 
 static void prio_changed_dummy(struct rq *rq, struct task_struct *p, int oldprio)
 {
-	
+	// condition copied over from fair.c, is it needed ?
+	if(!p->se.on_rq)
+		return;
+		/*
+		 * Comment in fair.c :
+		 *
+		 * Reschedule if we are currently running on this runqueue and
+		 * our priority decreased, or if we are not currently running on
+		 * this runqueue and our priority is higher than the current's
+		 * * *
+		 * What resched_task does :
+		 *
+		 * resched_task is used to mark that a current running task
+		 * should be rescheduled, i.e. that we want to take the CPU from it.
+		 *
+		 * resched_task() does not interrupt anything ; it sets the TIF_NEED_RESCHED flag
+		 * in the task structure. The actual switch is done in the schedule() function.
+		 * The schedule() function is invoked in a lazy way by setting the aforementioned flag.
+		 * The value of the flag is checked before resuming the execution of a user mode process,
+		 * which means that some more cycles could be spent in kernel code before the switch.
+		 *
+		 * In task_tick_dummy(), one can call test_tsk_need_resched() to check if the flag is set.
+		 */
+		if (rq->curr == p) {
+			if (p->prio > oldprio) // priority decrease
+				resched_task(rq->curr);
+		} else
+			check_preempt_curr(rq, p, 0);
 
 }
 
