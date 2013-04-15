@@ -321,10 +321,12 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
     
 }
 
+// task_struct p is leaving dummy_rq for another rq
 static void switched_from_dummy(struct rq *rq, struct task_struct *p)
 {
 }
 
+// task_struct p is entering dummy_rq from another rq
 static void switched_to_dummy(struct rq *rq, struct task_struct *p)
 {
 }
