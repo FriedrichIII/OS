@@ -5,3 +5,4 @@ Scheduler/linux-3.8.3/arch/um/os-Linux/start_up.c
 Scheduler/linux-3.8.3/arch/um/os-Linux/signal.c
 Scheduler/Debian-Wheezy-AMD64-root_fs
 /Scheduler/Scheduler/
+/Scheduler/linux-3.8.3/kernel/Scheduler/
