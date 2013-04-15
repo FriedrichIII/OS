@@ -116,6 +116,7 @@ enqueue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 				
 		
 	}
+	// list_add_tail does not need dummy_se->run_list to be initialized
 	list_add_tail(&dummy_se->run_list, queue);
 
 	//TODO we need to verify if we should preempt a task
