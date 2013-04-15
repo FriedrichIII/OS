@@ -4,6 +4,7 @@
 
 #include "sched.h"
 
+
 /*
  * Timeslice and age threshold are represented in jiffies. Default timeslice
  * is 100ms. Both parameters can be tuned from /proc/sys/kernel.
@@ -38,7 +39,7 @@ static inline unsigned int get_age_threshold()
 void init_dummy_rq(struct dummy_rq *dummy_rq, struct rq *rq)
 {
 	//INIT_LIST_HEAD(&dummy_rq->queue);
-
+        printk(KERN_DEBUG "DUMMY RQ : initialized");
 	INIT_LIST_HEAD(&dummy_rq->queueP15);
 	INIT_LIST_HEAD(&dummy_rq->queueP16);
 	INIT_LIST_HEAD(&dummy_rq->queueP17);
@@ -86,18 +87,25 @@ enqueue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 {
 	//_enqueue_task_dummy(rq, p);
 
-	struct sched_dummy_entity *dummy_se= &p->dummy_se;
+	struct sched_dummy_entity* dummy_se= &p->dummy_se;
 
 	struct list_head* queue = NULL;
 	// TODO check the prio values used	
 	// put the given task in the right priority queue	
 
-	int totalPriority = p->prio - dummy_se->priorityIncrement;
+        printk(KERN_DEBUG "ENQUEUE TASK DUMMY - task enqueued, priority: %i\n", p->prio);
+        
+	int totalPriority = PRIO_TO_NICE(p->prio) - dummy_se->priorityIncrement;
 	
 	if (totalPriority < HIGHEST_PRIORITY){
 		totalPriority = HIGHEST_PRIORITY;
 	}
-
+        //ADDED TO DEBUG
+        
+//        queue = &rq->dummy.queueP15;
+//        list_add_tail(&dummy_se->run_list, queue );
+        
+        
 	switch (totalPriority){
 		case PRIO1 : queue = &rq->dummy.queueP15;	
 			break;
@@ -111,23 +119,27 @@ enqueue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 			break;
 		default :
 			// TODO : put something here to detect the error
-					
+                       printk(KERN_DEBUG "ENQUEUE_TASK - ooops, task not enqueued!!!");
 			break;
 				
 		
 	}
 	// list_add_tail does not need dummy_se->run_list to be initialized
-	list_add_tail(&dummy_se->run_list, queue);
+	
+        if(queue != NULL){
+            list_add_tail(&dummy_se->run_list, queue);
+        }
+        
 
 	//TODO we need to verify if we should preempt a task
-	int currentTaskPriority=(rq->curr->prio)-rq->curr->dummy_se.priorityIncrement;
+	int currentTaskPriority=(PRIO_TO_NICE(rq->curr->prio))-rq->curr->dummy_se.priorityIncrement;
 
 	if(currentTaskPriority>totalPriority){
 		resched_task(rq->curr);
 	}
 	
 	//enqueue_dummy_entity(dummy_se);
-
+         
 	/*struct sched_rt_entity *rt_se = &p->rt;
 
 		if (flags & ENQUEUE_WAKEUP)
@@ -140,13 +152,14 @@ enqueue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 
 		*/
 
-
+        
 	inc_nr_running(rq);
 }
 
 static void dequeue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 {
 	_dequeue_task_dummy(p);
+        
 	dec_nr_running(rq);
 }
 //TODO adapt this to RR----------------------------------
@@ -170,7 +183,8 @@ requeue_dummy_entity(struct dummy_rq *dummy_rq, struct sched_dummy_entity *dummy
 	}*/
 }
 
-static void requeue_task_dummy(struct rq *rq, struct task_struct *p, int head)
+static void
+requeue_task_dummy(struct rq *rq, struct task_struct *p, int head)
 {
 	/*
 	struct sched_rt_entity *rt_se = &p->rt;
@@ -190,7 +204,8 @@ static void yield_task_dummy(struct rq *rq)
 
 }
 
-static void check_preempt_curr_dummy(struct rq *rq, struct task_struct *p, int flags)
+static void
+check_preempt_curr_dummy(struct rq *rq, struct task_struct *p, int flags)
 {
 	//TODO ask if we need to use our own prio or the one from the task
 	
