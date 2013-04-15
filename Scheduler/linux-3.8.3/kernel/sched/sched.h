@@ -43,6 +43,12 @@ extern __read_mostly int scheduler_running;
  */
 #define RUNTIME_INF	((u64)~0ULL)
 
+/* priority range of the dummy scheduler
+ */
+
+#define DUMMY_PRIO_RANGE 5
+
+
 static inline int rt_policy(int policy)
 {
 	if (policy == SCHED_FIFO || policy == SCHED_RR)
@@ -331,13 +337,13 @@ struct rt_rq {
 struct dummy_rq {
 	//struct list_head queue;
 	
-	struct list_head queueP15;
-	struct list_head queueP16;
-	struct list_head queueP17;
-	struct list_head queueP18;
-	struct list_head queueP19;
-
-
+        struct list_head priorities[DUMMY_PRIO_RANGE];
+    
+//	struct list_head queueP15;
+//	struct list_head queueP16;
+//	struct list_head queueP17;
+//	struct list_head queueP18;
+//	struct list_head queueP19;
 };
 
 #ifdef CONFIG_SMP
