@@ -243,7 +243,7 @@ static void
 check_preempt_curr_dummy(struct rq *rq, struct task_struct *p, int flags)
 {
 	//TODO ask if we need to use our own prio or the one from the task
-    printk(KERN_DEBUG "CHECK_PREEMP : checking preemption on task %p\n ", p);
+    printk(KERN_DEBUG "CHECK_PREEMP : checking preemption on task %p\n", p);
 	if (p->prio < rq->curr->prio) {
 		resched_task(rq->curr);
 		return;
@@ -290,7 +290,6 @@ pick_next_task_dummy(struct rq *rq)
         struct task_struct* chosenTask= dummy_task_of(next);
         printk(KERN_DEBUG "PICK_NEXT_TASK - task %p picked, age: %i, timeslice: %i\n", chosenTask, next->age, next->timeslice);            
     
-        
         return chosenTask;
 	} else {
 		return NULL;
@@ -299,13 +298,13 @@ pick_next_task_dummy(struct rq *rq)
 
 static void put_prev_task_dummy(struct rq *rq, struct task_struct *prev)
 {
-    printk(KERN_DEBUG "PUT_PREV_TASK : executed %p, previous task %p\n ", rq->curr, prev);
+    printk(KERN_DEBUG "PUT_PREV_TASK : executed %p, previous task %p\n", rq->curr, prev);
 	
 }
 
 static void set_curr_task_dummy(struct rq *rq)
 {
-    printk(KERN_DEBUG "SET_CURR_TASK : executed %p\n ", rq->curr);
+    printk(KERN_DEBUG "SET_CURR_TASK : executed %p\n", rq->curr);
 	
 }
 
@@ -318,6 +317,7 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
     if(tmpDummy_se->timeslice){
     }else{
         //TODO check if there is another task in the runlist of this priority, or one in another list.
+        tmpDummy_se->timeslice=get_timeslice();
         printk(KERN_DEBUG "TASK TICK DUMMY: RR for task %p\n", curr);
         if(tmpDummy_se->run_list.prev != tmpDummy_se->run_list.next){
         	// requeue will reset sched entity fields to default value
