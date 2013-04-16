@@ -86,8 +86,7 @@ _enqueue_task_dummy(struct rq *rq, struct task_struct *p)
 	if (totalPriority < HIGHEST_PRIORITY){
 		totalPriority = HIGHEST_PRIORITY;
 	}
-    printk(KERN_DEBUG "ENQUEUE TASK DUMMY - task %p enqueued, priority: %i\n", p, totalPriority);
-            
+    printk(KERN_DEBUG "ENQUEUE TASK DUMMY - task %p enqueued, priority: %i, age: %i, timeslice: %i\n", p, totalPriority, dummy_se->age, dummy_se->timeslice);            
     
     //ADDED TO DEBUG
         
@@ -126,11 +125,10 @@ _enqueue_task_dummy(struct rq *rq, struct task_struct *p)
 	int currentTaskPriority=(PRIO_TO_NICE(rq->curr->prio))-rq->curr->dummy_se.priorityIncrement;
 
 	if(currentTaskPriority>totalPriority){
-        printk(KERN_DEBUG "ENQUEUE TASK DUMMY - current task preempted, current_priority: %i, new priority : %i\n", currentTaskPriority,totalPriority);
+        printk(KERN_DEBUG "ENQUEUE TASK DUMMY - current task %p preempted, current_priority: %i, new priority : %i\n",p, currentTaskPriority,totalPriority);
 
         resched_task(rq->curr);
         requeue_task_dummy(rq, rq->curr, 0);
-        
 	}
 	
 	//enqueue_dummy_entity(dummy_se);
@@ -233,6 +231,9 @@ requeue_dummy_entity(struct dummy_rq *dummy_rq, struct sched_dummy_entity *dummy
 
 static void yield_task_dummy(struct rq *rq)
 {
+    struct sched_dummy_entity dummy_se* = &rq->curr->dummy_se;
+    printk(KERN_DEBUG "YIELD TASK DUMMY - task %p yields, age: %i, timeslice: %i\n", rq->curr, dummy_se->age, dummy_se->timeslice);            
+    
 	//We remove the task from the list and enqueue it again
 	requeue_task_dummy(rq, rq->curr, 0);
 	
@@ -242,7 +243,7 @@ static void
 check_preempt_curr_dummy(struct rq *rq, struct task_struct *p, int flags)
 {
 	//TODO ask if we need to use our own prio or the one from the task
-    printk(KERN_DEBUG "CHECK_PREEMP : checking preemption\n ");
+    printk(KERN_DEBUG "CHECK_PREEMP : checking preemption on task %p\n ", p);
 	if (p->prio < rq->curr->prio) {
 		resched_task(rq->curr);
 		return;
@@ -299,7 +300,8 @@ static void put_prev_task_dummy(struct rq *rq, struct task_struct *prev)
 
 static void set_curr_task_dummy(struct rq *rq)
 {
-    
+    printk(KERN_DEBUG "SET_CURR_TASK : executed %p\n ", rq);
+	
     
 }
 
@@ -308,7 +310,7 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
 {
     struct sched_dummy_entity* tmpDummy_se = &curr->dummy_se;
     if(--tmpDummy_se->timeslice){
-        
+        //nothing to do
     }else{
         //TODO check if there is another task in the runlist of this priority, or one in another list.
         if(tmpDummy_se->run_list.prev != tmpDummy_se->run_list.next){
@@ -375,17 +377,22 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
 // task_struct p is leaving dummy_rq for another rq
 static void switched_from_dummy(struct rq *rq, struct task_struct *p)
 {
-    
+    printk(KERN_DEBUG "SWITCHED_FROM_DUMMY : task %p switched from dummy\n ", p);
+	
     
 }
 
 // task_struct p is entering dummy_rq from another rq
 static void switched_to_dummy(struct rq *rq, struct task_struct *p)
 {
+    printk(KERN_DEBUG "SWITCHED_TO_DUMMY : task %p switched to dummy\n ", p);
+	
 }
 
 static void prio_changed_dummy(struct rq *rq, struct task_struct *p, int oldprio)
 {
+    printk(KERN_DEBUG "PRIO_CHANGED_DUMMY : priority changed from %i to %i on task %p\n ",p->prio,oldprio, p);
+	
 	// condition copied over from fair.c, is it needed ?
 	if(!p->se.on_rq)
 		return;
