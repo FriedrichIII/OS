@@ -296,10 +296,9 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
         
         //TODO check if there is another task in the runlist of this priority, or one in another list.
         if(tmpDummy_se->run_list.prev != tmpDummy_se->run_list.next){
-            //resched_task(curr);
+            resched_task(curr);
+            requeue_task_dummy(rq, curr, 0);
         }
-        // @Pascal: Why outside the if test?
-        resched_task(curr);
         
     }
     
