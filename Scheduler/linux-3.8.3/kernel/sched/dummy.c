@@ -313,8 +313,9 @@ static void
 task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
 {
     struct sched_dummy_entity* tmpDummy_se = &curr->dummy_se;
-    if(--tmpDummy_se->timeslice){
-        //nothing to do
+    tmpDummy_se->timeslice--;
+    printk(KERN_DEBUG "TASK TICK DUMMY: timeslice of task %p reduced from %i to %i\n", curr, tmpDummy_se->timeslice+1, tmpDummy_se->timeslice);
+    if(tmpDummy_se->timeslice){
     }else{
         //TODO check if there is another task in the runlist of this priority, or one in another list.
         printk(KERN_DEBUG "TASK TICK DUMMY: RR for task %p\n", curr);
@@ -352,7 +353,7 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
                 
                 if (crtEntity->age >= get_age_threshold()) {
                     crtEntity->priorityIncrement++;
-                    printk(KERN_DEBUG "TASK_TICK : a task %p has reached age threshold %d", &crtEntity, crtEntity->age);
+                    printk(KERN_DEBUG "TASK_TICK : a task %p has reached age threshold %d", crtEntity, crtEntity->age);
                     crtEntity->age=0;
                     //TODO change the list on which the entity is
                     to_requeue[to_requeue_count] = crtTask;
