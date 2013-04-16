@@ -334,42 +334,41 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
         crtHead=(dummy_rq->priorities)+i;
         //if(!list_empty(crtHead)){ not necessary as list_for_each_entry makes no loop with empty list
             
-            list_for_each_entry(crtEntity,crtHead, run_list){
-                //Test for ageing
-                crtTask=dummy_task_of(crtEntity);
-                
-                if(crtEntity != &curr->dummy_se ){
-                    //TODO METTRE EN PLACE LA DETECTION DE prio incr.
-                    // if(PRIO_TO_NICE(crtTask->prio) > HIGHEST_PRIORITY ){ not necessary as enqueue already caps the total priority
-                        crtEntity->age++;
-                        //printk(KERN_DEBUG "TASK_TICK : a task %p is aging", &crtEntity);
-                       
-                        if (crtEntity->age >= get_age_threshold()) {
-                            crtEntity->priorityIncrement++;
-                            crtEntity->age=0;
-                            
-                            //TODO change the list on which the entity is
-                            dequeue_task_dummy(rq, crtTask, 0);
-                            _enqueue_task_dummy(rq, crtTask);
-                            
-                        }
-                         
-                    //} end if(PRIO_TO_NICE(crtTask->prio > HIGHEST_PRIORITY)
-                    
-                }    
-            }
+        list_for_each_entry(crtEntity,crtHead, run_list){
+            //Test for ageing
+            crtTask=dummy_task_of(crtEntity);
             
-            /*
-            for_each_sched_dummy_entity(dummy_se_of(crtHead)){
-                if(curr->dummy_se != tmpDummy_se){
-                        tmpDummy_se->age++;
+            if(crtEntity != &curr->dummy_se ){
+            //TODO METTRE EN PLACE LA DETECTION DE prio incr.
+            // if(PRIO_TO_NICE(crtTask->prio) > HIGHEST_PRIORITY ){ not necessary as enqueue already caps the total priority
+                crtEntity->age++;
+                //printk(KERN_DEBUG "TASK_TICK : a task %p is aging", &crtEntity);
+               
+                if (crtEntity->age >= get_age_threshold()) {
+                    crtEntity->priorityIncrement++;
+                    crtEntity->age=0;
+                    
+                    //TODO change the list on which the entity is
+                    dequeue_task_dummy(rq, crtTask, 0);
+                    _enqueue_task_dummy(rq, crtTask);
                 }
-                if(tmpDummy_se->age > get_age_threshold()){
-                    tmpDummy_se->age = 0;
-                    tmpDummy_se->priorityIncrement++;
-                }
+                 
+            //} end if(PRIO_TO_NICE(crtTask->prio > HIGHEST_PRIORITY)
+                
+            }    
+        }
+        
+        /*
+        for_each_sched_dummy_entity(dummy_se_of(crtHead)){
+            if(curr->dummy_se != tmpDummy_se){
+                    tmpDummy_se->age++;
+            }
+            if(tmpDummy_se->age > get_age_threshold()){
+                tmpDummy_se->age = 0;
+                tmpDummy_se->priorityIncrement++;
+            }
 
-            }*/
+        }*/
         
         //} end if (!list_empty(crtHead))
         
