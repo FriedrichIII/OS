@@ -332,8 +332,7 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
     
     for (;i<DUMMY_PRIO_RANGE;i++) {
         crtHead=(dummy_rq->priorities)+i;
-        crtEntity=list_entry(crtHead, struct sched_dummy_entity, run_list);
-        if(!list_empty(crtHead)){
+        //if(!list_empty(crtHead)){ not necessary as list_for_each_entry makes no loop with empty list
             
             list_for_each_entry(crtEntity,crtHead, run_list){
                 //Test for ageing
@@ -341,7 +340,7 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
                 
                 if(crtEntity != &curr->dummy_se ){
                     //TODO METTRE EN PLACE LA DETECTION DE prio incr.
-                    if(PRIO_TO_NICE(crtTask->prio) > HIGHEST_PRIORITY ){
+                    // if(PRIO_TO_NICE(crtTask->prio) > HIGHEST_PRIORITY ){ not necessary as enqueue already caps the total priority
                         crtEntity->age++;
                         //printk(KERN_DEBUG "TASK_TICK : a task %p is aging", &crtEntity);
                        
@@ -355,7 +354,7 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
                             
                         }
                          
-                    }
+                    //} end if(PRIO_TO_NICE(crtTask->prio > HIGHEST_PRIORITY)
                     
                 }    
             }
@@ -372,7 +371,7 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
 
             }*/
         
-        }
+        //} end if (!list_empty(crtHead))
         
     
     }
