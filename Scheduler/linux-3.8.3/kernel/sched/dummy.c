@@ -322,7 +322,9 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
     struct sched_dummy_entity* crtEntity=NULL;
     struct task_struct* crtTask=NULL;
     
-    
+    int requeue_size = 64;
+    struct task_struct* to_requeue[requeue_size];
+    int to_requeue_count = 0;
     
     for (;i<DUMMY_PRIO_RANGE;i++) {
         crtHead=(dummy_rq->priorities)+i;
@@ -331,20 +333,19 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
         list_for_each_entry(crtEntity,crtHead, run_list){
             //Test for ageing
             crtTask=dummy_task_of(crtEntity);
-            
             if(crtEntity != &curr->dummy_se ){
-            //TODO METTRE EN PLACE LA DETECTION DE prio incr.
-            // if(PRIO_TO_NICE(crtTask->prio) > HIGHEST_PRIORITY ){ not necessary as enqueue already caps the total priority
+		        //TODO METTRE EN PLACE LA DETECTION DE prio incr.
+		        // if(PRIO_TO_NICE(crtTask->prio) > HIGHEST_PRIORITY ){ not necessary as enqueue already caps the total priority
                 crtEntity->age++;
                 //printk(KERN_DEBUG "TASK_TICK : a task %p is aging", &crtEntity);
-               
+                
+                
                 if (crtEntity->age >= get_age_threshold()) {
                     crtEntity->priorityIncrement++;
                     crtEntity->age=0;
-                    
                     //TODO change the list on which the entity is
-                    dequeue_task_dummy(rq, crtTask, 0);
-                    _enqueue_task_dummy(rq, crtTask);
+                    to_requeue[to_requeue_count] = crtTask;
+                    to_requeue_count ++;
                 }
                  
             //} end if(PRIO_TO_NICE(crtTask->prio > HIGHEST_PRIORITY)
@@ -352,7 +353,12 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
             }    
         }
         //} end if (!list_empty(crtHead))
-    }
+        int j;
+    	for (j=0; j<to_requeue_count; j++) {
+            dequeue_task_dummy(rq, to_requeue[j], 0);
+            _enqueue_task_dummy(rq, to_requeue[j]);
+    	}
+    } // end loop on dummy_prio_queue
     
     //test creation of list
     
