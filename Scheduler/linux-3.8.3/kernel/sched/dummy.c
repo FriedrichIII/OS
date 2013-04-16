@@ -4,7 +4,6 @@
 
 #include "sched.h"
 
-
 /*
  * Timeslice and age threshold are represented in jiffies. Default timeslice
  * is 100ms. Both parameters can be tuned from /proc/sys/kernel.
@@ -13,11 +12,6 @@
 #define DUMMY_TIMESLICE		(100 * HZ / 1000)
 #define DUMMY_AGE_THRESHOLD	(3 * DUMMY_TIMESLICE)
 #define HIGHEST_PRIORITY 15
-#define PRIO1 15
-#define PRIO2 16
-#define PRIO3 17
-#define PRIO4 18
-#define PRIO5 19
 #define for_each_sched_dummy_entity(dummy_se) \
 	for (; dummy_se; dummy_se = NULL)
 	
@@ -132,8 +126,8 @@ _enqueue_task_dummy(struct rq *rq, struct task_struct *p)
 	if(currentTaskPriority>totalPriority){
         printk(KERN_DEBUG "ENQUEUE TASK DUMMY - current task preempted, current_priority: %i, new priority : %i\n", currentTaskPriority,totalPriority);
 
-        requeue_task_dummy(rq, rq->curr, 0);
         resched_task(rq->curr);
+        requeue_task_dummy(rq, rq->curr, 0);
         
 	}
 	
@@ -318,12 +312,10 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
         printk(KERN_DEBUG "TASK TICK DUMMY: RR for task %p\n", curr);
         if(tmpDummy_se->run_list.prev != tmpDummy_se->run_list.next){
         	// requeue will reset sched entity fields to default value
-            requeue_task_dummy(rq, curr, 0);
             resched_task(curr);
+            requeue_task_dummy(rq, curr, 0);
         }
     }
-    
-    
     //TODO implement ageing
     
     struct dummy_rq* dummy_rq=&rq->dummy;
@@ -363,21 +355,7 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
                 
             }    
         }
-        
-        /*
-        for_each_sched_dummy_entity(dummy_se_of(crtHead)){
-            if(curr->dummy_se != tmpDummy_se){
-                    tmpDummy_se->age++;
-            }
-            if(tmpDummy_se->age > get_age_threshold()){
-                tmpDummy_se->age = 0;
-                tmpDummy_se->priorityIncrement++;
-            }
-
-        }*/
-        
         //} end if (!list_empty(crtHead))
-        
         int j;
     	for (j=0; j<to_requeue_count; j++) {
             dequeue_task_dummy(rq, to_requeue[j], 0);
@@ -385,12 +363,12 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
     	}
     } // end loop on dummy_prio_queue
     
+    //test creation of list
     
     
     
     
-    
-    
+     
 }
 
 // task_struct p is leaving dummy_rq for another rq
