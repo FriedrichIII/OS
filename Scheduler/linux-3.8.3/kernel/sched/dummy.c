@@ -80,14 +80,16 @@ _enqueue_task_dummy(struct rq *rq, struct task_struct *p)
 	// TODO check the prio values used	
 	// put the given task in the right priority queue	
 
-        printk(KERN_DEBUG "ENQUEUE TASK DUMMY - task %p enqueued, priority: %i\n", p, p->prio);
         
 	int totalPriority = PRIO_TO_NICE(p->prio) - dummy_se->priorityIncrement;
 	
 	if (totalPriority < HIGHEST_PRIORITY){
 		totalPriority = HIGHEST_PRIORITY;
 	}
-        //ADDED TO DEBUG
+    printk(KERN_DEBUG "ENQUEUE TASK DUMMY - task %p enqueued, priority: %i\n", p, totalPriority);
+            
+    
+    //ADDED TO DEBUG
         
 //        queue = &rq->dummy.queueP15;
 //        list_add_tail(&dummy_se->run_list, queue );
@@ -374,6 +376,8 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
 // task_struct p is leaving dummy_rq for another rq
 static void switched_from_dummy(struct rq *rq, struct task_struct *p)
 {
+    
+    
 }
 
 // task_struct p is entering dummy_rq from another rq
