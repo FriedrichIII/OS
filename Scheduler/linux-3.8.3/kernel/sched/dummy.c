@@ -302,7 +302,6 @@ static void set_curr_task_dummy(struct rq *rq)
 {
     printk(KERN_DEBUG "SET_CURR_TASK : executed %p\n ", rq);
 	
-    
 }
 
 static void
