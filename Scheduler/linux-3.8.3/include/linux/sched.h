@@ -1234,8 +1234,8 @@ struct sched_dummy_entity {
 	unsigned int age;
 	// the dummy_rq.queueP1? in which the entity is contained
 	struct list_head run_list;
-        // the countdown 'til the entity gets sliced to bits
-        unsigned int timeslice;
+    // the countdown 'til the entity gets sliced to bits
+    unsigned int timeslice;	
 };
 
 struct rcu_node;

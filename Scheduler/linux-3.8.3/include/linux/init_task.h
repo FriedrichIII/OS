@@ -172,6 +172,7 @@ extern struct task_group root_task_group;
 		.run_list	= LIST_HEAD_INIT(tsk.dummy_se.run_list),\
 		.age = 0,\
 		.priorityIncrement = 0,\
+		.timeslice = 0,\
 	},								\
 	.tasks		= LIST_HEAD_INIT(tsk.tasks),			\
 	INIT_PUSHABLE_TASKS(tsk)					\

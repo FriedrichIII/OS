@@ -65,39 +65,20 @@ static inline struct task_struct *dummy_task_of(struct sched_dummy_entity *dummy
 	return container_of(dummy_se, struct task_struct, dummy_se);
 }
 
-// Unused
-static inline void _enqueue_task_dummy(struct rq *rq, struct task_struct *p)
+
+
+// set the given task_struct in corresponding dummy_queue
+static inline void
+_enqueue_task_dummy(struct rq *rq, struct task_struct *p)
 {
 /*
 	struct sched_dummy_entity *dummy_se = &p->dummy_se;
         struct list_head *queue = &rq->dummy.queue;
         list_add_tail(&dummy_se->run_list, queue);
 */
-}
 
-static inline void _dequeue_task_dummy(struct task_struct *p)
-{
-	struct sched_dummy_entity *dummy_se = &p->dummy_se;
-        list_del_init(&dummy_se->run_list);
-}
-
-/*
- * Scheduling class functions to implement
- */
-
-static void
-enqueue_dummy_entity(struct sched_dummy_entity* dummy_se){
-		
-
-}
-
-static void 
-enqueue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
-{
-	//_enqueue_task_dummy(rq, p);
 
 	struct sched_dummy_entity* dummy_se= &p->dummy_se;
-
 	struct list_head* queue = NULL;
 	// TODO check the prio values used	
 	// put the given task in the right priority queue	
@@ -165,6 +146,40 @@ enqueue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 
         
 	inc_nr_running(rq);
+
+}
+
+static inline void _dequeue_task_dummy(struct task_struct *p)
+{
+	struct sched_dummy_entity *dummy_se = &p->dummy_se;
+        list_del_init(&dummy_se->run_list);
+}
+
+/*
+ * Scheduling class functions to implement
+ */
+
+static void
+enqueue_dummy_entity(struct sched_dummy_entity* dummy_se){
+		
+
+}
+
+static void
+set_default_se(struct sched_dummy_entity *dummy_se) {
+	dummy_se->priorityIncrement = 0;
+	dummy_se->age = 0;
+	dummy_se->timeslice = get_timeslice();
+}
+
+static void 
+enqueue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
+{
+	struct sched_dummy_entity* dummy_se= &p->dummy_se;
+	// reinitialises default dummy_se fields before enqueueing
+	// used when the current task is enqueued
+	set_default_se(dummy_se);
+	_enqueue_task_dummy(rq, p);
 }
 
 static void dequeue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
@@ -198,6 +213,7 @@ requeue_dummy_entity(struct dummy_rq *dummy_rq, struct sched_dummy_entity *dummy
 static void
 requeue_task_dummy(struct rq *rq, struct task_struct *p, int head)
 {
+	// reset 
 	
     dequeue_task_dummy(rq, p, head);
     enqueue_task_dummy(rq, p, head);
@@ -216,7 +232,7 @@ static void yield_task_dummy(struct rq *rq)
 {
 	//We remove the task from the list and enqueue it again
 	requeue_task_dummy(rq, rq->curr, 0);
-
+	
 }
 
 static void
