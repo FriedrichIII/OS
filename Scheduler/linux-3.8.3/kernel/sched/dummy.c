@@ -223,7 +223,7 @@ static void
 check_preempt_curr_dummy(struct rq *rq, struct task_struct *p, int flags)
 {
 	//TODO ask if we need to use our own prio or the one from the task
-    printk(KERN_DEBUG "CHECK_PREEMP : checkig ")
+    printk(KERN_DEBUG "CHECK_PREEMP : checkig ");
 	if (p->prio < rq->curr->prio) {
 		resched_task(rq->curr);
 		return;
@@ -259,6 +259,7 @@ higher_nonempty_queue(struct dummy_rq *dummy_rq)
 static struct task_struct *
 pick_next_task_dummy(struct rq *rq)
 {
+	// TODO This method should check if first_task should be requeud (timeslice, preempt, ...)
 	struct dummy_rq *dummy_rq = &rq->dummy;
 	struct list_head *queue = higher_nonempty_queue(dummy_rq);
 	struct sched_dummy_entity *next;
@@ -266,7 +267,7 @@ pick_next_task_dummy(struct rq *rq)
 	if (queue) {
 		next = list_first_entry(queue, struct sched_dummy_entity, run_list);
 		next->timeslice=get_timeslice();
-                return dummy_task_of(next);
+        return dummy_task_of(next);
 	} else {
 		return NULL;
 	}
@@ -289,13 +290,15 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
     if(--tmpDummy_se->timeslice){
         
     }else{
+    	// debug output
+    	printk(KERN_DEBUG "CURR_TASK : should RR");
         tmpDummy_se->timeslice= get_timeslice();
         
         //TODO check if there is another task in the runlist of this priority, or one in another list.
         if(tmpDummy_se->run_list.prev != tmpDummy_se->run_list.next){
             //resched_task(curr);
         }
-        
+        // @Pascal: Why outside the if test?
         resched_task(curr);
         
     }
