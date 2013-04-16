@@ -279,16 +279,19 @@ higher_nonempty_queue(struct dummy_rq *dummy_rq)
 static struct task_struct *
 pick_next_task_dummy(struct rq *rq)
 {
-	// TODO This method should check if first_task should be requeud (timeslice, preempt, ...)
+	
+    // TODO This method should check if first_task should be requeud (timeslice, preempt, ...)
 	struct dummy_rq *dummy_rq = &rq->dummy;
 	struct list_head *queue = higher_nonempty_queue(dummy_rq);
 	struct sched_dummy_entity *next;
 
 	if (queue) {
 		next = list_first_entry(queue, struct sched_dummy_entity, run_list);
-		next->timeslice=get_timeslice();
+        struct task_struct* chosenTask= dummy_task_of(next);
+        printk(KERN_DEBUG "PICK_NEXT_TASK - task %p picked, age: %i, timeslice: %i\n", chosenTask, next->age, next->timeslice);            
+    
         
-        return dummy_task_of(next);
+        return chosenTask;
 	} else {
 		return NULL;
 	}
@@ -296,6 +299,8 @@ pick_next_task_dummy(struct rq *rq)
 
 static void put_prev_task_dummy(struct rq *rq, struct task_struct *prev)
 {
+    printk(KERN_DEBUG "PUT_PREV_TASK : executed %p, previous task %p\n ", rq->curr, prev);
+	
 }
 
 static void set_curr_task_dummy(struct rq *rq)
