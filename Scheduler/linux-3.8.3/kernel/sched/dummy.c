@@ -20,6 +20,10 @@
 #define PRIO5 19
 #define for_each_sched_dummy_entity(dummy_se) \
 	for (; dummy_se; dummy_se = NULL)
+	
+static void enqueue_task_dummy(struct rq *, struct task_struct *, int);
+static void dequeue_task_dummy(struct rq *, struct task_struct *, int);
+static void requeue_task_dummy(struct rq *, struct task_struct *, int);
 
 
 unsigned int sysctl_sched_dummy_timeslice = DUMMY_TIMESLICE;
@@ -43,7 +47,7 @@ void init_dummy_rq(struct dummy_rq *dummy_rq, struct rq *rq)
 	//INIT_LIST_HEAD(&dummy_rq->queue);
         printk(KERN_DEBUG "DUMMY RQ : initialized");
 	
-        struct list_head* prioArray=&dummy_rq->priorities;
+        struct list_head* prioArray = dummy_rq->priorities;
         int i=0;
         for (; i< DUMMY_PRIO_RANGE; i++) {
             INIT_LIST_HEAD(prioArray+i);
@@ -127,9 +131,8 @@ _enqueue_task_dummy(struct rq *rq, struct task_struct *p)
 
 	if(currentTaskPriority>totalPriority){
         printk(KERN_DEBUG "ENQUEUE TASK DUMMY - current task preempted, current_priority: %i, new priority : %i\n", currentTaskPriority,totalPriority);
-        
-        dequeue_task_dummy(rq, rq->curr, 0);
-        enqueue_task_dummy(rq, rq->curr, 0);
+
+        requeue_task_dummy(rq, rq->curr, 0);
         resched_task(rq->curr);
         
 	}
@@ -260,7 +263,7 @@ higher_nonempty_queue(struct dummy_rq *dummy_rq)
 {
     int i=0;
     for(; i<DUMMY_PRIO_RANGE; i++){
-        if(!list_empty(&dummy_rq->priorities[i])) return &dummy_rq->priorities[i];
+        if(!list_empty(dummy_rq->priorities+i)) return dummy_rq->priorities+i;
     }
 //	if (!list_empty(&dummy_rq->priorities[])) return &dummy_rq->queueP15;
 //	if (!list_empty(&dummy_rq->queueP16)) return &dummy_rq->queueP16;
@@ -310,15 +313,9 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
     if(--tmpDummy_se->timeslice){
         
     }else{
-    	// debug output
-    	printk(KERN_DEBUG "CURR_TASK : should RR");
-        tmpDummy_se->timeslice= get_timeslice();
-        
-        // the priority of the task return to normal
-        curr->dummy_se.priorityIncrement=0;
-        
         //TODO check if there is another task in the runlist of this priority, or one in another list.
         if(tmpDummy_se->run_list.prev != tmpDummy_se->run_list.next){
+        	// requeue will reset sched entity fields to default value
             requeue_task_dummy(rq, curr, 0);
             resched_task(curr);
         }
@@ -329,12 +326,12 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
     
     struct dummy_rq* dummy_rq=&rq->dummy;
     int i=0;
-    list_head* crtHead=NULL;
+    struct list_head* crtHead=NULL;
     struct sched_dummy_entity* crtEntity=NULL;
     struct task_struct* crtTask=NULL;
     
-    for(;i<DUMMY_PRIO_RANGE;i++) {
-        crtHead=dummy_rq->priorities[i];
+    for (;i<DUMMY_PRIO_RANGE;i++) {
+        crtHead=(dummy_rq->priorities)+i;
         crtEntity=list_entry(crtHead, struct sched_dummy_entity, run_list);
         if(!list_empty(crtHead)){
             
@@ -342,13 +339,13 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
                 //Test for ageing
                 crtTask=dummy_task_of(crtEntity);
                 
-                if(crtEntity != curr->dummy_se ){
+                if(crtEntity != &curr->dummy_se ){
                     //TODO METTRE EN PLACE LA DETECTION DE prio incr.
                     if(PRIO_TO_NICE(crtTask->prio) > HIGHEST_PRIORITY ){
                         crtEntity->age++;
-                        printk(KERN_DEBUG "TASK_TICK : a task %p is aging", &crtEntity);
+                        //printk(KERN_DEBUG "TASK_TICK : a task %p is aging", &crtEntity);
                        
-                        if(crtEntity->age > get_age_threshold()){
+                        if (crtEntity->age >= get_age_threshold()) {
                             crtEntity->priorityIncrement++;
                             crtEntity->age=0;
                             
