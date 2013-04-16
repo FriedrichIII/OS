@@ -231,7 +231,7 @@ requeue_dummy_entity(struct dummy_rq *dummy_rq, struct sched_dummy_entity *dummy
 
 static void yield_task_dummy(struct rq *rq)
 {
-    struct sched_dummy_entity dummy_se* = &rq->curr->dummy_se;
+    struct sched_dummy_entity* dummy_se = &rq->curr->dummy_se;
     printk(KERN_DEBUG "YIELD TASK DUMMY - task %p yields, age: %i, timeslice: %i\n", rq->curr, dummy_se->age, dummy_se->timeslice);            
     
 	//We remove the task from the list and enqueue it again
