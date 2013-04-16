@@ -315,6 +315,7 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
     }else{
         //TODO check if there is another task in the runlist of this priority, or one in another list.
         if(tmpDummy_se->run_list.prev != tmpDummy_se->run_list.next){
+        	printk(KERN_CRIT "RR reached\n");
         	// requeue will reset sched entity fields to default value
             requeue_task_dummy(rq, curr, 0);
             resched_task(curr);
@@ -330,33 +331,45 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
     struct sched_dummy_entity* crtEntity=NULL;
     struct task_struct* crtTask=NULL;
     
+    int requeue_size = 64;
+    struct task_struct* to_requeue[requeue_size];
+    int to_requeue_count = 0;
+    
     for (;i<DUMMY_PRIO_RANGE;i++) {
         crtHead=(dummy_rq->priorities)+i;
+        printk(KERN_CRIT "prio queue %d extracted\n", i+1);
         //if(!list_empty(crtHead)){ not necessary as list_for_each_entry makes no loop with empty list
             
         list_for_each_entry(crtEntity,crtHead, run_list){
             //Test for ageing
+            printk(KERN_CRIT "    loop over sched entities of %d prio queue\n", i+1);
+            printk(KERN_CRIT "    entity is %p\n", crtEntity);
             crtTask=dummy_task_of(crtEntity);
-            
+            printk(KERN_CRIT "    task of current entity extracted\n");
             if(crtEntity != &curr->dummy_se ){
-            //TODO METTRE EN PLACE LA DETECTION DE prio incr.
-            // if(PRIO_TO_NICE(crtTask->prio) > HIGHEST_PRIORITY ){ not necessary as enqueue already caps the total priority
+            	printk(KERN_CRIT "        currEntity is not the current one\n");
+		        //TODO METTRE EN PLACE LA DETECTION DE prio incr.
+		        // if(PRIO_TO_NICE(crtTask->prio) > HIGHEST_PRIORITY ){ not necessary as enqueue already caps the total priority
                 crtEntity->age++;
+                printk(KERN_CRIT "        currEntitiy: age incremented\n");
                 //printk(KERN_DEBUG "TASK_TICK : a task %p is aging", &crtEntity);
-               
+                
+                
                 if (crtEntity->age >= get_age_threshold()) {
+                	printk(KERN_CRIT "            age threshold reached, incrementing priority\n");
                     crtEntity->priorityIncrement++;
                     crtEntity->age=0;
-                    
                     //TODO change the list on which the entity is
-                    dequeue_task_dummy(rq, crtTask, 0);
-                    _enqueue_task_dummy(rq, crtTask);
+                    printk(KERN_CRIT "            planning requeueing task of new priority\n");
+                    to_requeue[to_requeue_count] = crtTask;
+                    to_requeue_count ++;
                 }
                  
             //} end if(PRIO_TO_NICE(crtTask->prio > HIGHEST_PRIORITY)
                 
             }    
         }
+        printk(KERN_CRIT "end_loop");
         
         /*
         for_each_sched_dummy_entity(dummy_se_of(crtHead)){
@@ -372,8 +385,12 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
         
         //} end if (!list_empty(crtHead))
         
-    
-    }
+        int j;
+    	for (j=0; j<to_requeue_count; j++) {
+            dequeue_task_dummy(rq, to_requeue[j], 0);
+            _enqueue_task_dummy(rq, to_requeue[j]);
+    	}
+    } // end loop on dummy_prio_queue
     
     
     
