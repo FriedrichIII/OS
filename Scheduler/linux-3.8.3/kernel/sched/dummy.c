@@ -29,7 +29,7 @@ static inline unsigned int get_timeslice()
 unsigned int sysctl_sched_dummy_age_threshold = DUMMY_AGE_THRESHOLD;
 static inline unsigned int get_age_threshold()
 {
-	return sysctl_sched_dummy_age_threshold;
+	return sysctl_sched_dummy_age_threshold * get_timeslice();
 }
 
 /*
@@ -312,6 +312,7 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
         //nothing to do
     }else{
         //TODO check if there is another task in the runlist of this priority, or one in another list.
+        printk(KERN_DEBUG "TASK TICK DUMMY: RR for task %p\n", curr);
         if(tmpDummy_se->run_list.prev != tmpDummy_se->run_list.next){
         	// requeue will reset sched entity fields to default value
             resched_task(curr);
@@ -340,8 +341,8 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
             if(crtEntity != &curr->dummy_se ){
 		        //TODO METTRE EN PLACE LA DETECTION DE prio incr.
 		        // if(PRIO_TO_NICE(crtTask->prio) > HIGHEST_PRIORITY ){ not necessary as enqueue already caps the total priority
+                printk(KERN_DEBUG "TASK_TICK : a task %p is aging from %d to %d\n", crtEntity, crtEntity->age, crtEntity->age+1);
                 crtEntity->age++;
-                //printk(KERN_DEBUG "TASK_TICK : a task %p is aging", &crtEntity);
                 
                 
                 if (crtEntity->age >= get_age_threshold()) {
