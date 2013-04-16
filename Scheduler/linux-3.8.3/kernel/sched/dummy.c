@@ -86,7 +86,7 @@ _enqueue_task_dummy(struct rq *rq, struct task_struct *p)
 	// TODO check the prio values used	
 	// put the given task in the right priority queue	
 
-        printk(KERN_DEBUG "ENQUEUE TASK DUMMY - task enqueued, priority: %i\n", p->prio);
+        printk(KERN_DEBUG "ENQUEUE TASK DUMMY - task %p enqueued, priority: %i\n", p, p->prio);
         
 	int totalPriority = PRIO_TO_NICE(p->prio) - dummy_se->priorityIncrement;
 	
@@ -191,6 +191,7 @@ enqueue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 
 static void dequeue_task_dummy(struct rq *rq, struct task_struct *p, int flags)
 {
+	printk(KERN_DEBUG "DEQUEUE TASK DUMMY: dequeuing task %p\n", p);
 	_dequeue_task_dummy(p);
         
 	dec_nr_running(rq);
@@ -350,6 +351,7 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
                 
                 if (crtEntity->age >= get_age_threshold()) {
                     crtEntity->priorityIncrement++;
+                    printk(KERN_DEBUG "TASK_TICK : a task %p has reached age threshold %d", &crtEntity, crtEntity->age);
                     crtEntity->age=0;
                     //TODO change the list on which the entity is
                     to_requeue[to_requeue_count] = crtTask;
