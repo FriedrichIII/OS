@@ -1226,13 +1226,12 @@ struct sched_rt_entity {
  */
 #define RR_TIMESLICE		(100 * HZ / 1000)
 
-//TODO complete that
 struct sched_dummy_entity {
 	// the diff due to ageing with the base priority given	
 	unsigned int priorityIncrement;
 	// the time in jiffy that the entity spent waiting in queues
 	unsigned int age;
-	// the dummy_rq.queueP1? in which the entity is contained
+	// the dummy_rq.priorities[i] in which the entity is contained
 	struct list_head run_list;
     // the countdown 'til the entity gets sliced to bits
     unsigned int timeslice;	
