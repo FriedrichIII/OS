@@ -375,8 +375,6 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
     //test creation of list
     
     
-    
-    
      
 }
 
