@@ -212,6 +212,9 @@ static void set_curr_task_dummy(struct rq *rq)
 static void
 task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
 {	
+
+    struct sched_dummy_entity* currDummy_se = &curr->dummy_se;
+    
 	// ageing
     
     struct dummy_rq* dummy_rq=&rq->dummy;
@@ -224,7 +227,7 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
     
     
     
-    int curr_prio =PRIO_TO_NICE((curr->prio)-(tmpDummy_se->priorityIncrement));
+    int curr_prio =PRIO_TO_NICE((curr->prio)-(currDummy_se->priorityIncrement));
     if (curr_prio < HIGHEST_PRIORITY) curr_prio=HIGHEST_PRIORITY;
     int i = curr_prio-HIGHEST_PRIORITY+1;
     printk(KERN_DEBUG "TASK_TICK : Current task prio = %d, starting at index %d\n", curr_prio, i);
@@ -237,7 +240,7 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
         list_for_each_entry(crtEntity,crtHead, run_list){
             //Test for ageing
             crtTask=dummy_task_of(crtEntity);
-            if(crtEntity != &curr->dummy_se){
+            if(crtEntity != currDummy_se){
                 printk(KERN_DEBUG "TASK_TICK : a task %p is aging from %d to %d\n", crtTask, crtEntity->age, crtEntity->age+1);
                 crtEntity->age++;
                 
@@ -255,7 +258,7 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
     	// stores the task to requeue in an array
         int j=0;
     	list_for_each_entry (crtEntity,crtHead, run_list) {
-    		if (crtEntity != &curr->dummy_se && crtEntity->age >= get_age_threshold()) {
+    		if (crtEntity != currDummy_se && crtEntity->age >= get_age_threshold()) {
             	crtTask=dummy_task_of(crtEntity);
                 printk(KERN_DEBUG "TASK_TICK : planning requeueing of task %p, %d/%d\n", crtTask, j+1, to_requeue_count);
     			to_requeue[j] = crtTask;
@@ -276,10 +279,9 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
     
     // timeslicing	
 	
-    struct sched_dummy_entity* tmpDummy_se = &curr->dummy_se;
-    tmpDummy_se->timeslice--;
-    printk(KERN_DEBUG "TASK TICK DUMMY: timeslice of task %p reduced from %i to %i\n", curr, tmpDummy_se->timeslice+1, tmpDummy_se->timeslice);
-    if(tmpDummy_se->timeslice){
+    currDummy_se->timeslice--;
+    printk(KERN_DEBUG "TASK TICK DUMMY: timeslice of task %p reduced from %i to %i\n", curr, currDummy_se->timeslice+1, currDummy_se->timeslice);
+    if(currDummy_se->timeslice){
     	// no timeslice here!
     }else{
         printk(KERN_DEBUG "TASK TICK DUMMY: RR for task %p\n", curr);
