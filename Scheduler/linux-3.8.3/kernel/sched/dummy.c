@@ -329,11 +329,10 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
     struct sched_dummy_entity* crtEntity=NULL;
     struct task_struct* crtTask=NULL;
     
-    int requeue_size = 64;
-    struct task_struct* to_requeue[requeue_size];
-    int to_requeue_count = 0;
+    int to_requeue_count;
     
     for (;i<DUMMY_PRIO_RANGE;i++) {
+    	to_requeue_count = 0;
         crtHead=(dummy_rq->priorities)+i;
         //if(!list_empty(crtHead)){ not necessary as list_for_each_entry makes no loop with empty list
             
@@ -343,16 +342,14 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
             if(crtEntity != &curr->dummy_se ){
 		        //TODO METTRE EN PLACE LA DETECTION DE prio incr.
 		        // if(PRIO_TO_NICE(crtTask->prio) > HIGHEST_PRIORITY ){ not necessary as enqueue already caps the total priority
-                printk(KERN_DEBUG "TASK_TICK : a task %p is aging from %d to %d\n", crtEntity, crtEntity->age, crtEntity->age+1);
+                printk(KERN_DEBUG "TASK_TICK : a task %p is aging from %d to %d\n", crtTask, crtEntity->age, crtEntity->age+1);
                 crtEntity->age++;
                 
                 
                 if (crtEntity->age >= get_age_threshold()) {
                     crtEntity->priorityIncrement++;
-                    printk(KERN_DEBUG "TASK_TICK : a task %p has reached age threshold %d", crtEntity, crtEntity->age);
-                    crtEntity->age=0;
-                    //TODO change the list on which the entity is
-                    to_requeue[to_requeue_count] = crtTask;
+                    printk(KERN_DEBUG "TASK_TICK : a task %p has reached age threshold %d\n", crtTask, crtEntity->age);
+                    //TODO change the list on which the entity 
                     to_requeue_count ++;
                 }
                  
@@ -360,9 +357,34 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
                 
             }    
         }
+        
+    	struct task_struct* to_requeue[to_requeue_count];
+    	
+        int j=0;
+        
+    	list_for_each_entry (crtEntity,crtHead, run_list) {
+    		if (crtEntity != &curr->dummy_se && crtEntity->age >= get_age_threshold()) {
+            	crtTask=dummy_task_of(crtEntity);
+                printk(KERN_DEBUG "TASK_TICK : planning requeueing of task %p, %d/%d\n", crtTask, j+1, to_requeue_count);
+    			to_requeue[j] = crtTask;
+    			j++;
+    			crtEntity->age = 0;
+    		}
+    	}
+        
+        /*
+        list_for_each_entry(crtEntity, crtHead, run_list) {
+        	if (crtEntity != &curr->dummy_se && crtEntity->age >= get_age_threshold()) {
+                printk(KERN_DEBUG "TASK_TICK : Planning requeuing of task %p\n", crtEntity);
+                crtEntity->age=0;
+        		to_requeue[j] = crtEntity;
+        		j++;
+        	}
+        }
+        */
         //} end if (!list_empty(crtHead))
-        int j;
     	for (j=0; j<to_requeue_count; j++) {
+            printk(KERN_DEBUG "TASK_TICK : Requeuing task %p\n", to_requeue[j]);
             dequeue_task_dummy(rq, to_requeue[j], 0);
             _enqueue_task_dummy(rq, to_requeue[j]);
     	}
