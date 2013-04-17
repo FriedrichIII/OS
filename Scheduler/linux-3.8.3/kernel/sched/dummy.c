@@ -316,7 +316,11 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
     struct task_struct* crtTask=NULL;
     
     int to_requeue_count;
-    int i=(curr->prio)-(tmpDummy_se->priorityIncrement)+1;
+    
+    int curr_prio =PRIO_TO_NICE((curr->prio)-(tmpDummy_se->priorityIncrement));
+    if (curr_prio < HIGHEST_PRIORITY) curr_prio=HIGHEST_PRIORITY;
+    int i = curr_prio-HIGHEST_PRIORITY+1;
+    printk(KERN_CRIT "TASK_TICK : Current task prio = %d, starting at index %d\n", curr_prio, i);
     for (;i<DUMMY_PRIO_RANGE;i++) {
     	to_requeue_count = 0;
         crtHead=(dummy_rq->priorities)+i;
