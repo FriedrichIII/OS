@@ -29,7 +29,7 @@ static inline unsigned int get_timeslice()
 unsigned int sysctl_sched_dummy_age_threshold = DUMMY_AGE_THRESHOLD;
 static inline unsigned int get_age_threshold()
 {
-	return sysctl_sched_dummy_age_threshold * get_timeslice();
+	return sysctl_sched_dummy_age_threshold;
 }
 
 /*
@@ -316,15 +316,11 @@ task_tick_dummy(struct rq *rq, struct task_struct *curr, int queued)
     printk(KERN_DEBUG "TASK TICK DUMMY: timeslice of task %p reduced from %i to %i\n", curr, tmpDummy_se->timeslice+1, tmpDummy_se->timeslice);
     if(tmpDummy_se->timeslice){
     }else{
-        //TODO check if there is another task in the runlist of this priority, or one in another list.
-        tmpDummy_se->timeslice=get_timeslice();
         printk(KERN_DEBUG "TASK TICK DUMMY: RR for task %p\n", curr);
-        if(tmpDummy_se->run_list.prev != tmpDummy_se->run_list.next){
-        	// requeue will reset sched entity fields to default value
-            resched_task(curr);
-            requeue_task_dummy(rq, curr, 0);
-        }
-    }
+    	// requeue will reset sched entity fields to default value
+        resched_task(curr);
+        requeue_task_dummy(rq, curr, 0);
+	}
     //TODO implement ageing
     
     struct dummy_rq* dummy_rq=&rq->dummy;
