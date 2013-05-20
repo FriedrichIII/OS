@@ -204,8 +204,11 @@ byte_array_to_int(char *array, int offset, int length)
 static int
 vfat_readdir(/* XXX add your code here, */fuse_fill_dir_t filler, void *fillerdata)
 {
+	/* this stat structure is used to store the properties of a file or directory
+	 * being read. It has to be passed as an argument to the filler function.
+	 */
 	struct stat st;
-	void *buf = NULL;
+	void *buf = NULL; // we do not have to use this buf variable (according to the forum)
 	struct vfat_direntry *e;
 	char *name;
 
@@ -231,6 +234,10 @@ vfat_search_entry(void *data, const char *name, const struct stat *st, off_t off
 	return (1);
 }
 
+/*
+ * The return value of vfat_resolve tells whether the searched path exists in
+ * the filesystem or not.
+ */
 static int
 vfat_resolve(const char *path, struct stat *st)
 {
@@ -252,7 +259,9 @@ vfat_fuse_readdir(const char *path, void *data,
 		  fuse_fill_dir_t filler, off_t offs, struct fuse_file_info *fi)
 {
 	printf("vfat_fuse_readdir\n");
-	/* XXX add your code here */
+
+
+
 	return 0;
 }
 
