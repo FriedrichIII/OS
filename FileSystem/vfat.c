@@ -15,6 +15,9 @@
 #include <string.h>
 #include <unistd.h>
 
+// Function prototypes
+static int byte_array_to_int(char *array, int offset, int length);
+
 struct vfat_super {
 	uint8_t		res1[3];
 	char		oemname[8];
@@ -132,27 +135,48 @@ vfat_init(const char *dev)
 	 * of the FAT32 filesystem.
 	 */
 	int fd = f->fs;
-	struct vfat_super* volumeID_fields = f->volumeID_fields;
+	struct vfat_super* volumeID_fields = &f->volumeID_fields;
 	char buffer[4]; // a buffer to use with the read() system call
-	char* pBuffer = &buffer;
 
 	volumeID_fields->bytes_per_sector = 512; // always 512
 
 	// read the number of sectors per cluster
 	lseek(fd, 0xD, SEEK_SET);
-	read(fd, pBuffer, 16);
-	int sectorsPerCluster = byte_array_to_int(*pBuffer, 0, 4);
+	read(fd, buffer, 1);
+	int sectorsPerCluster = byte_array_to_int(buffer, 0, 4);
 	volumeID_fields->sectors_per_cluster = sectorsPerCluster;
-
-
 
 	// read the number of reserved sectors
 	lseek(fd, 0xE, SEEK_SET);
-	read(fd, pBuffer, 8);
-	int reservedSectors = byte_array_to_int(*pBuffer, 0, 4);
+	read(fd, buffer, 2);
+	int reservedSectors = byte_array_to_int(buffer, 0, 4);
 	volumeID_fields->reserved_sectors = reservedSectors;
 
+	// read the number of FATs ("always 2")
+	lseek(fd, 0x10, SEEK_SET);
+	read(fd, buffer, 1);
+	int numberOfFATs = byte_array_to_int(buffer, 0, 4);
+	volumeID_fields->fat_count = numberOfFATs;
 
+	// read the number of sectors per FATs
+	lseek(fd, 0x24, SEEK_SET);
+	read(fd, buffer, 4);
+	int numberOfSectorsPerFAT = byte_array_to_int(buffer, 0, 4);
+	volumeID_fields->sectors_per_fat = numberOfSectorsPerFAT;
+
+	// read the disk address of the root directory first cluster
+	lseek(fd, 0x2C, SEEK_SET);
+	read(fd, buffer, 4);
+	int rootDirFirstCluster = byte_array_to_int(buffer, 0, 4);
+	volumeID_fields->root_cluster = rootDirFirstCluster;
+
+	// check the signature, which should always be 0xAA55
+	lseek(fd, 0x1FE, SEEK_SET);
+	read(fd, buffer, 2);
+	int signature = byte_array_to_int(buffer, 0, 4);
+	if (signature != 0xAA55) {
+		errx(1, "Incorrect FAT32 volume ID signature");
+	}
 }
 
 /* XXX add your code here */
