@@ -118,7 +118,11 @@ vfat_init(const char *dev)
 	mount_uid = getuid();
 	mount_gid = getgid();
 	mount_time = time(NULL);
-
+/*
+ * f->fs is the FileDescriptor of the file
+ * in which we have to read all the fat
+ * informations
+ */
 	f->fs = open(dev, O_RDONLY);
 	if (f->fs < 0)
 		err(1, "open(%s)", dev);
@@ -169,21 +173,27 @@ vfat_resolve(const char *path, struct stat *st)
 static int
 vfat_fuse_getattr(const char *path, struct stat *st)
 {
+	printf("vfat_fuse_getattr\n");
 	/* XXX add your code here */
+	return 0;
 }
 
 static int
 vfat_fuse_readdir(const char *path, void *data,
 		  fuse_fill_dir_t filler, off_t offs, struct fuse_file_info *fi)
 {
+	printf("vfat_fuse_readdir\n");
 	/* XXX add your code here */
+	return 0;
 }
 
 static int
 vfat_fuse_read(const char *path, char *buf, size_t size, off_t offs,
 	       struct fuse_file_info *fi)
 {
+	printf("vfat_fuse_readdir\n");
 	/* XXX add your code here */
+	return 0;
 }
 
 static int
