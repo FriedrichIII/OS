@@ -133,7 +133,7 @@ vfat_init(const char *dev)
 	 */
 	int fd = f->fs;
 	struct vfat_super* volumeID_fields = f->volumeID_fields;
-	char buffer[32]; // a buffer to use with the read() system call
+	char buffer[4]; // a buffer to use with the read() system call
 	char* pBuffer = &buffer;
 
 	volumeID_fields->bytes_per_sector = 512; // always 512
@@ -141,12 +141,17 @@ vfat_init(const char *dev)
 	// read the number of sectors per cluster
 	lseek(fd, 0xD, SEEK_SET);
 	read(fd, pBuffer, 16);
-	volumeID_fields->sectors_per_cluster = *pBuffer;
+	int sectorsPerCluster = byte_array_to_int(*pBuffer, 0, 4);
+	volumeID_fields->sectors_per_cluster = sectorsPerCluster;
+
+
 
 	// read the number of reserved sectors
 	lseek(fd, 0xE, SEEK_SET);
 	read(fd, pBuffer, 8);
-	volumeID_fields->reserved_sectors = *pBuffer;
+	int reservedSectors = byte_array_to_int(*pBuffer, 0, 4);
+	volumeID_fields->reserved_sectors = reservedSectors;
+
 
 }
 
@@ -154,13 +159,19 @@ vfat_init(const char *dev)
 /*
  *
  */
+
+/*
+ * Converts an array of bytes to an int
+ * offset : the first byte of the array from which to read
+ * length : the number of bytes to read from the array
+ */
 static int
 byte_array_to_int(char *array, int offset, int length)
 {
 	int result = 0;
 	int i;
-	for (i=0; i<length; i++) {
-		result = result<<8;
+	for (i = offset; i < length; i++) {
+		result = result << 8;
 		result += array[i];
 	}
 	return result;
