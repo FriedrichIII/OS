@@ -89,7 +89,7 @@ struct vfat_direntry_lfn {
 
 struct vfat {
 	const char	*dev;
-	int		fs;
+	int		fs; // file descriptor to the filesystem file
 	/* XXX add your code here */
 };
 
