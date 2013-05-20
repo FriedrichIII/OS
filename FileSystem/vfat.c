@@ -151,6 +151,20 @@ vfat_init(const char *dev)
 }
 
 /* XXX add your code here */
+/*
+ *
+ */
+static int
+byte_array_to_int(char *array, int offset, int length)
+{
+	int result = 0;
+	int i;
+	for (i=0; i<length; i++) {
+		result = result<<8;
+		result += array[i];
+	}
+	return result;
+}
 
 static int
 vfat_readdir(/* XXX add your code here, */fuse_fill_dir_t filler, void *fillerdata)
