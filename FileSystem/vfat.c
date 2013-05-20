@@ -107,7 +107,10 @@ gid_t mount_gid;
 time_t mount_time;
 size_t pagesize;
 
-
+/*
+ * The dev parameter is the filename of the .fat file, the filesystem
+ * to mount
+ */
 static void
 vfat_init(const char *dev)
 {
