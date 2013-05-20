@@ -90,7 +90,7 @@ struct vfat_direntry_lfn {
 struct vfat {
 	const char	*dev;
 	int		fs; // file descriptor to the filesystem file
-	/* XXX add your code here */
+	struct vfat_super volumeID_fields;
 };
 
 struct vfat_search_data {
@@ -127,7 +127,27 @@ vfat_init(const char *dev)
 	if (f->fs < 0)
 		err(1, "open(%s)", dev);
 
-	/* XXX add your code here */
+	/* Initialization of the vfat_super structure containing
+	 * the volume ID info fields. The volume ID is the first cluster
+	 * of the FAT32 filesystem.
+	 */
+	int fd = f->fs;
+	struct vfat_super* volumeID_fields = f->volumeID_fields;
+	char buffer[32]; // a buffer to use with the read() system call
+	char* pBuffer = &buffer;
+
+	volumeID_fields->bytes_per_sector = 512; // always 512
+
+	// read the number of sectors per cluster
+	lseek(fd, 0xD, SEEK_SET);
+	read(fd, pBuffer, 16);
+	volumeID_fields->sectors_per_cluster = *pBuffer;
+
+	// read the number of reserved sectors
+	lseek(fd, 0xE, SEEK_SET);
+	read(fd, pBuffer, 8);
+	volumeID_fields->reserved_sectors = *pBuffer;
+
 }
 
 /* XXX add your code here */
