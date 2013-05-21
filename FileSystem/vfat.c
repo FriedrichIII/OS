@@ -17,6 +17,7 @@
 
 // Function prototypes
 static int byte_array_to_int(char *array, int offset, int length);
+static int r_read(int fdes, char *buffer, int offset, int byte_count);
 
 struct vfat_super {
 	uint8_t		res1[3];
@@ -198,6 +199,20 @@ byte_array_to_int(char *array, int offset, int length)
 		result = result << 8;
 		result += array[i];
 	}
+	return result;
+}
+/*
+ * random read function.
+ * Read byte_count bytes from position offset in file represented by fdes and stores them in buff.
+ * int fdes input file descriptor of file to be read
+ * char *buffer output array to store read bytes
+ * int offset input position where start the read (included)
+ * int byte_count input number of bytes to be read in file
+ * int return output number of bytes effectively read in file.
+ */
+static int r_read(int fdes, char *buffer, int offset, int byte_count) {
+	lseek(fdes, offset, SEEK_SET);
+	int result = read(fdes, buffer, byte_count);
 	return result;
 }
 
