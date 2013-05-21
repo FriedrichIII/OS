@@ -141,12 +141,11 @@ vfat_init(const char *dev)
 	struct vfat_super* volumeID_fields = &f->volumeID_fields;
 	unsigned char buffer[0x200]; // a buffer to use with the read() system call 512 bytes to read all VolumeID at once
 
-
-
-	// reads VolumeID
+    // reads VolumeID
 	r_read(fd, buffer, 0, 0x200);
 
-
+/*
+//	Debug output
 	int i;
 	int j;
 	for (i=0; i<0x20; i++) {
@@ -156,6 +155,7 @@ vfat_init(const char *dev)
 		}
 		printf("\n");
 	}
+ */
 
 	// read the number of bytes per sector (always 512)
 	// Bytes Per Sector	0x0B	16 Bits
@@ -191,19 +191,20 @@ vfat_init(const char *dev)
 	// Signature	0x1FE	16 Bits
 	int signature = byte_array_to_int(buffer, 0x1FE, 2);
 
-	if (signature != 0x55AA) {
+	if (signature != 0xAA55) {
 		errx(1, "Incorrect FAT32 volume ID signature\n"
-				"Got 0x%x, expected 0x55AA", signature);
+				"Got 0x%04.4X, expected 0xAA55", signature);
 	}
 
-
+/*
+//	Debug output
 	printf("bytesPerSector: %u\n"
 			"sectorsPerCluster: %u\n"
 			"reservedSectors: %u\n"
 			"numberOfFATs: %u\n"
 			"numberOfSectorsPerFAT: %u\n"
 			"rootDirFirstCluster: %u\n"
-			"signature: %u\n",
+			"signature: %04.4X\n",
 			f->volumeID_fields.bytes_per_sector,
 			f->volumeID_fields.sectors_per_cluster,
 			f->volumeID_fields.reserved_sectors,
@@ -211,6 +212,7 @@ vfat_init(const char *dev)
 			f->volumeID_fields.sectors_per_fat,
 			f->volumeID_fields.root_cluster,
 			signature);
+*/
 }
 
 /* XXX add your code here */
@@ -219,21 +221,23 @@ vfat_init(const char *dev)
  */
 
 /*
- * Converts an array of bytes to an int
+ * Converts an array of bytes to an int.
+ * Interpret array as little endian. That is byte of smalles index
+ * is less significative.
  * offset : the first byte of the array from which to read
  * length : the number of bytes to read from the array
  */
 static int
 byte_array_to_int(unsigned char *array, int offset, int length)
 {
-	// FIXME Little endian or big endian? something strange happening
 	int result = 0;
 	int i;
-	printf("byte_array_to_int called\n");
-	for (i = offset; i < length+offset; i++) {
-		result = result << 8;
-		result += array[i];
-		printf("Result is now: %x\n", result);
+	for (i = 0; i < length; i++) {
+		// reads the byte at ith pos from offset
+		int byte = array[i+offset];
+
+		// the ith byte is shifted to the right of i bytes
+		result += byte << (i*8);
 	}
 	return result;
 }
