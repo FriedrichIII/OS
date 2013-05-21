@@ -16,8 +16,8 @@
 #include <unistd.h>
 
 // Function prototypes
-static int byte_array_to_int(char *array, int offset, int length);
-static int r_read(int fdes, char *buffer, int offset, int byte_count);
+static int byte_array_to_int(unsigned char *array, int offset, int length);
+static int r_read(int fdes,unsigned char *buffer, int offset, int byte_count);
 
 struct vfat_super {
 	uint8_t		res1[3];
@@ -139,52 +139,78 @@ vfat_init(const char *dev)
 	 */
 	int fd = f->fs;
 	struct vfat_super* volumeID_fields = &f->volumeID_fields;
-	char buffer[4]; // a buffer to use with the read() system call
+	unsigned char buffer[0x200]; // a buffer to use with the read() system call 512 bytes to read all VolumeID at once
 
-	volumeID_fields->bytes_per_sector = 512; // always 512
 
-	// TODO Sequential reading could be exploited to optimize this section
+
+	// reads VolumeID
+	r_read(fd, buffer, 0, 0x200);
+
+
+	int i;
+	int j;
+	for (i=0; i<0x20; i++) {
+		printf("0x%x :", i*0x10);
+		for (j=0; j<0x10; j++) {
+			printf( "%02.2X ", buffer[i*0x10+j]);
+		}
+		printf("\n");
+	}
+
+	// read the number of bytes per sector (always 512)
+	// Bytes Per Sector	0x0B	16 Bits
+	int bytesPerSector = byte_array_to_int(buffer, 0xB, 2);
+	volumeID_fields->bytes_per_sector = bytesPerSector;
 
 	// read the number of sectors per cluster
-	/*
-	lseek(fd, 0xD, SEEK_SET);
-	read(fd, buffer, 1);
-	*/
-	r_read(fd, buffer, 0xD, 1);
-	int sectorsPerCluster = byte_array_to_int(buffer, 0, 4);
+	// Sectors Per Cluster	0x0D	8 Bits
+	int sectorsPerCluster = byte_array_to_int(buffer, 0xD, 1);
 	volumeID_fields->sectors_per_cluster = sectorsPerCluster;
 
 	// read the number of reserved sectors
-	lseek(fd, 0xE, SEEK_SET);
-	read(fd, buffer, 2);
-	int reservedSectors = byte_array_to_int(buffer, 0, 4);
+	// Number of Reserved Sectors	0x0E	16 Bits
+	int reservedSectors = byte_array_to_int(buffer, 0xE, 2);
 	volumeID_fields->reserved_sectors = reservedSectors;
 
 	// read the number of FATs ("always 2")
-	lseek(fd, 0x10, SEEK_SET);
-	read(fd, buffer, 1);
-	int numberOfFATs = byte_array_to_int(buffer, 0, 4);
+	// Number of FATs	0x10	8 Bits
+	int numberOfFATs = byte_array_to_int(buffer, 0x10, 1);
 	volumeID_fields->fat_count = numberOfFATs;
 
 	// read the number of sectors per FATs
-	lseek(fd, 0x24, SEEK_SET);
-	read(fd, buffer, 4);
-	int numberOfSectorsPerFAT = byte_array_to_int(buffer, 0, 4);
+	// Sectors Per FAT	0x24	32 Bits
+	int numberOfSectorsPerFAT = byte_array_to_int(buffer, 0x24, 4);
 	volumeID_fields->sectors_per_fat = numberOfSectorsPerFAT;
 
 	// read the disk address of the root directory first cluster
-	lseek(fd, 0x2C, SEEK_SET);
-	read(fd, buffer, 4);
-	int rootDirFirstCluster = byte_array_to_int(buffer, 0, 4);
+	// Root Directory First Cluster	0x2C	32 Bits
+	int rootDirFirstCluster = byte_array_to_int(buffer, 0x2C, 4);
 	volumeID_fields->root_cluster = rootDirFirstCluster;
 
-	// check the signature, which should always be 0xAA55
-	lseek(fd, 0x1FE, SEEK_SET);
-	read(fd, buffer, 2);
-	int signature = byte_array_to_int(buffer, 0, 4);
-	if (signature != 0xAA55) {
-		errx(1, "Incorrect FAT32 volume ID signature");
+	// check the signature, which should always be 0x55AA
+	// Signature	0x1FE	16 Bits
+	int signature = byte_array_to_int(buffer, 0x1FE, 2);
+
+	if (signature != 0x55AA) {
+		errx(1, "Incorrect FAT32 volume ID signature\n"
+				"Got 0x%x, expected 0x55AA", signature);
 	}
+
+
+	printf("bytesPerSector: %u\n"
+			"sectorsPerCluster: %u\n"
+			"reservedSectors: %u\n"
+			"numberOfFATs: %u\n"
+			"numberOfSectorsPerFAT: %u\n"
+			"rootDirFirstCluster: %u\n"
+			"signature: %u\n",
+			f->volumeID_fields.bytes_per_sector,
+			f->volumeID_fields.sectors_per_cluster,
+			f->volumeID_fields.reserved_sectors,
+			f->volumeID_fields.fat_count,
+			f->volumeID_fields.sectors_per_fat,
+			f->volumeID_fields.root_cluster,
+			signature);
 }
 
 /* XXX add your code here */
@@ -198,13 +224,16 @@ vfat_init(const char *dev)
  * length : the number of bytes to read from the array
  */
 static int
-byte_array_to_int(char *array, int offset, int length)
+byte_array_to_int(unsigned char *array, int offset, int length)
 {
+	// FIXME Little endian or big endian? something strange happening
 	int result = 0;
 	int i;
-	for (i = offset; i < length; i++) {
+	printf("byte_array_to_int called\n");
+	for (i = offset; i < length+offset; i++) {
 		result = result << 8;
 		result += array[i];
+		printf("Result is now: %x\n", result);
 	}
 	return result;
 }
@@ -217,7 +246,7 @@ byte_array_to_int(char *array, int offset, int length)
  * int byte_count input number of bytes to be read in file
  * int return output number of bytes effectively read in file.
  */
-static int r_read(int fdes, char *buffer, int offset, int byte_count) {
+static int r_read(int fdes,unsigned char *buffer, int offset, int byte_count) {
 	int success = 0;
 	success = lseek(fdes, offset, SEEK_SET);
 	if (success<0)
@@ -243,7 +272,7 @@ vfat_readdir(/* XXX add your code here, */fuse_fill_dir_t filler, void *fillerda
 	st.st_uid = mount_uid;
 	st.st_gid = mount_gid;
 	st.st_nlink = 1;
-
+	return (1);
 	/* XXX add your code here */
 }
 
@@ -269,7 +298,7 @@ static int
 vfat_resolve(const char *path, struct stat *st)
 {
 	struct vfat_search_data sd;
-
+	return (1);
 	/* XXX add your code here */
 }
 
