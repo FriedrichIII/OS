@@ -134,6 +134,8 @@ vfat_init(const char *dev)
 	/* Initialization of the vfat_super structure containing
 	 * the volume ID info fields. The volume ID is the first cluster
 	 * of the FAT32 filesystem.
+	 * In the testfs.fat used, there is no MBR so the file starts
+	 * with VolumeID ad byte 0
 	 */
 	int fd = f->fs;
 	struct vfat_super* volumeID_fields = &f->volumeID_fields;
@@ -141,9 +143,14 @@ vfat_init(const char *dev)
 
 	volumeID_fields->bytes_per_sector = 512; // always 512
 
+	// TODO Sequential reading could be exploited to optimize this section
+
 	// read the number of sectors per cluster
+	/*
 	lseek(fd, 0xD, SEEK_SET);
 	read(fd, buffer, 1);
+	*/
+	r_read(fd, buffer, 0xD, 1);
 	int sectorsPerCluster = byte_array_to_int(buffer, 0, 4);
 	volumeID_fields->sectors_per_cluster = sectorsPerCluster;
 
@@ -211,8 +218,13 @@ byte_array_to_int(char *array, int offset, int length)
  * int return output number of bytes effectively read in file.
  */
 static int r_read(int fdes, char *buffer, int offset, int byte_count) {
-	lseek(fdes, offset, SEEK_SET);
+	int success = 0;
+	success = lseek(fdes, offset, SEEK_SET);
+	if (success<0)
+		errx(1, "Error in lseek");
 	int result = read(fdes, buffer, byte_count);
+	if (result<0)
+		errx(1, "Error in read");
 	return result;
 }
 
