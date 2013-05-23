@@ -95,6 +95,8 @@ struct vfat {
 	const char	*dev;
 	int		fs; // file descriptor to the filesystem file
 	struct vfat_super volumeID_fields;
+	size_t fs_size;
+	unsigned char *fs_data;
 };
 
 struct vfat_search_data {
@@ -139,23 +141,17 @@ vfat_init(const char *dev)
 	 */
 	int fd = f->fs;
 	struct vfat_super* volumeID_fields = &f->volumeID_fields;
-	unsigned char buffer[0x200]; // a buffer to use with the read() system call 512 bytes to read all VolumeID at once
 
-    // reads VolumeID
-	r_read(fd, buffer, 0, 0x200);
-
-/*
-//	Debug output
-	int i;
-	int j;
-	for (i=0; i<0x20; i++) {
-		printf("0x%x :", i*0x10);
-		for (j=0; j<0x10; j++) {
-			printf( "%02.2X ", buffer[i*0x10+j]);
-		}
-		printf("\n");
-	}
- */
+	/*
+	 * Memory mapping
+	 */
+	// get size of fs.fat file
+	f->fs_size = lseek(fd, 0L, SEEK_END);
+	// seek back to 0
+	lseek(fd, 0, SEEK_SET);
+	// map the wole file
+	f->fs_data = mmap(NULL, f->fs_size, PROT_READ, MAP_PRIVATE, f->fs, 0);
+	unsigned char *buffer = f->fs_data; // just renaming
 
 	// read the number of bytes per sector (always 512)
 	// Bytes Per Sector	0x0B	16 Bits
@@ -264,7 +260,9 @@ static int r_read(int fdes,unsigned char *buffer, int offset, int byte_count) {
 
  /* end of personal methods */
 
-
+/*
+ * Reads one entry of directory
+ */
 static int
 vfat_readdir(/* XXX add your code here, */fuse_fill_dir_t filler, void *fillerdata)
 {
@@ -284,6 +282,11 @@ vfat_readdir(/* XXX add your code here, */fuse_fill_dir_t filler, void *fillerda
 	/* XXX add your code here */
 }
 
+/*
+ * Takes a vfat_search_data, a name and a stat associated to this name.
+ * If the name of search data match to name, then the content of the pointer
+ * st in vaft_search_data will be replaced by the given stat.
+ */
 static int
 vfat_search_entry(void *data, const char *name, const struct stat *st, off_t offs)
 {
@@ -315,7 +318,8 @@ vfat_fuse_getattr(const char *path, struct stat *st)
 {
 	/*
 	 * - find directory of file
-	 *
+	 * - looks for all dir entry in dir
+	 * - stat is filled with corresponding direntry.
 	 */
 
 	printf("vfat_fuse_getattr with path %s\n", path);
