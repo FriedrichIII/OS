@@ -1,5 +1,16 @@
+/*
+ * TODO Questions
+ *
+ * Is it always the case that 1 fat entry is associated to 1 cluster ? (size field)
+ *
+ */
+
+
+
 #define FUSE_USE_VERSION 26
 #define _GNU_SOURCE
+
+#define DATA f->fs_data
 
 #include <sys/types.h>
 #include <sys/mman.h>
@@ -18,6 +29,10 @@
 // Function prototypes
 static int byte_array_to_int(unsigned char *array, int offset, int length);
 static int r_read(int fdes,unsigned char *buffer, int offset, int byte_count);
+static unsigned long to_byte_address(int clusters, int sectors, int dir_entries);
+static int find_next_cluster(int current_cluster);
+static unsigned int get_fat_entry(unsigned int fat_index);
+//static int increment_dir_descr(struct vfat_dir_descr *dir);
 
 struct vfat_super {
 	uint8_t		res1[3];
@@ -97,12 +112,28 @@ struct vfat {
 	struct vfat_super volumeID_fields;
 	size_t fs_size;
 	unsigned char *fs_data;
+	// byte addresses
+	unsigned long fat_begin;
+	unsigned long data_begin;
 };
 
 struct vfat_search_data {
 	const char	*name;
 	int		found;
 	struct stat	*st;
+};
+
+struct vfat_dir_descr {
+	// location: nth cluster in data clusters
+	// this uses the real index, i.e. FAT entry index - 2
+
+	// first cluster of dir
+	int start_cluster;
+	// cluster being read. -1 if reached end of last cluster.
+	int current_cluster;
+
+	// dir entry index in cluster
+	int de_index;
 };
 
 struct vfat vfat_info, *f = &vfat_info;
@@ -151,47 +182,52 @@ vfat_init(const char *dev)
 	lseek(fd, 0, SEEK_SET);
 	// map the wole file
 	f->fs_data = mmap(NULL, f->fs_size, PROT_READ, MAP_PRIVATE, f->fs, 0);
-	unsigned char *buffer = f->fs_data; // just renaming
 
 	// read the number of bytes per sector (always 512)
 	// Bytes Per Sector	0x0B	16 Bits
-	int bytesPerSector = byte_array_to_int(buffer, 0xB, 2);
+	int bytesPerSector = byte_array_to_int(DATA, 0xB, 2);
 	volumeID_fields->bytes_per_sector = bytesPerSector;
 
 	// read the number of sectors per cluster
 	// Sectors Per Cluster	0x0D	8 Bits
-	int sectorsPerCluster = byte_array_to_int(buffer, 0xD, 1);
+	int sectorsPerCluster = byte_array_to_int(DATA, 0xD, 1);
 	volumeID_fields->sectors_per_cluster = sectorsPerCluster;
 
 	// read the number of reserved sectors
 	// Number of Reserved Sectors	0x0E	16 Bits
-	int reservedSectors = byte_array_to_int(buffer, 0xE, 2);
+	int reservedSectors = byte_array_to_int(DATA, 0xE, 2);
 	volumeID_fields->reserved_sectors = reservedSectors;
 
 	// read the number of FATs ("always 2")
 	// Number of FATs	0x10	8 Bits
-	int numberOfFATs = byte_array_to_int(buffer, 0x10, 1);
+	int numberOfFATs = byte_array_to_int(DATA, 0x10, 1);
 	volumeID_fields->fat_count = numberOfFATs;
 
 	// read the number of sectors per FATs
 	// Sectors Per FAT	0x24	32 Bits
-	int numberOfSectorsPerFAT = byte_array_to_int(buffer, 0x24, 4);
+	int numberOfSectorsPerFAT = byte_array_to_int(DATA, 0x24, 4);
 	volumeID_fields->sectors_per_fat = numberOfSectorsPerFAT;
 
 	// read the disk address of the root directory first cluster
 	// Root Directory First Cluster	0x2C	32 Bits
-	int rootDirFirstCluster = byte_array_to_int(buffer, 0x2C, 4);
+	int rootDirFirstCluster = byte_array_to_int(DATA, 0x2C, 4);
 	volumeID_fields->root_cluster = rootDirFirstCluster;
 
 	// check the signature, which should always be 0x55AA
 	// Signature	0x1FE	16 Bits
-	int signature = byte_array_to_int(buffer, 0x1FE, 2);
+	int signature = byte_array_to_int(DATA, 0x1FE, 2);
 
 	if (signature != 0xAA55) {
 		errx(1, "Incorrect FAT32 volume ID signature\n"
-				"Got 0x%04.4X, expected 0xAA55", signature);
+				"Got 0x%4.4X, expected 0xAA55", signature);
 	}
 
+	f->fat_begin = volumeID_fields->reserved_sectors
+			* volumeID_fields->bytes_per_sector;
+	f->data_begin = f->fat_begin +
+			volumeID_fields->fat_count
+			* volumeID_fields->sectors_per_fat
+			* volumeID_fields->bytes_per_sector;
 
 //	Debug output
 	printf("bytesPerSector: %u\n"
@@ -200,7 +236,7 @@ vfat_init(const char *dev)
 			"numberOfFATs: %u\n"
 			"numberOfSectorsPerFAT: %u\n"
 			"rootDirFirstCluster: %u\n"
-			"signature: %04.4X\n",
+			"signature: %4.4X\n",
 			f->volumeID_fields.bytes_per_sector,
 			f->volumeID_fields.sectors_per_cluster,
 			f->volumeID_fields.reserved_sectors,
@@ -238,6 +274,8 @@ byte_array_to_int(unsigned char *array, int offset, int length)
 	return result;
 }
 /*
+ * Unused since mmap() implementation.
+ *
  * random read function.
  * Read byte_count bytes from position offset in file represented by fdes and stores them in buff.
  * int fdes input file descriptor of file to be read
@@ -245,8 +283,11 @@ byte_array_to_int(unsigned char *array, int offset, int length)
  * int offset input position where start the read (included)
  * int byte_count input number of bytes to be read in file
  * int return output number of bytes effectively read in file.
+ *
  */
-static int r_read(int fdes,unsigned char *buffer, int offset, int byte_count) {
+static int
+r_read(int fdes,unsigned char *buffer, int offset, int byte_count)
+{
 	int success = 0;
 	success = lseek(fdes, offset, SEEK_SET);
 	if (success<0)
@@ -257,14 +298,101 @@ static int r_read(int fdes,unsigned char *buffer, int offset, int byte_count) {
 	return result;
 }
 
+/*
+ * Increments dir entry index in dir descriptor up to the next valid
+ * dir entry.
+ * This updates the cluster index of dir descr if needed.
+ *
+ * if the end of directory is reached, returns 0, returns 1 otherwise.
+ *
+ * TODO problems with prototype
+ */
+
+static int
+increment_dir_descr(struct vfat_dir_descr *dir)
+{
+
+	int dir_entries_per_cluster =
+			f->volumeID_fields.sectors_per_cluster
+			*f->volumeID_fields.bytes_per_sector/32;
+	// check that de_index is not outside indicated cluster
+	// or dir hasn't already been read until the end
+	if (dir->de_index >= dir_entries_per_cluster
+			|| dir->current_cluster==-1)
+		return 0;
+
+	// deleted entry
+	unsigned char entryFirstByte = 0xE5;
+
+	// while (deleted entry)
+	while (entryFirstByte == 0xE5) {
+		entryFirstByte = DATA[to_byte_address(dir->current_cluster, 0, dir->de_index)];
+
+		// check if current entry is not end of dir
+		if (entryFirstByte == 0)
+			return 0;
+		dir->de_index += 1;
+
+		// test if end of cluster reached
+		if (dir->de_index >= dir_entries_per_cluster) {
+			// lookup for next cluster in FAT
+			dir->current_cluster = find_next_cluster(dir->current_cluster);
+			dir->de_index = 0;
+			// last cluster reached when next_cluster == -1
+			if (dir->current_cluster == -1) {
+				// de_index value does not matter when current_cluster == -1
+				return 0;
+			}
+		}
+	}
+	return 1;
+}
+
+/*
+ * computes the DATA address.
+ * to_byte_address(0, 0, 0) returns the byte address of first data cluster
+ */
+static unsigned long
+to_byte_address(int clusters, int sectors, int dir_entries)
+{
+	unsigned long clusterBytes = clusters * f->volumeID_fields.sectors_per_cluster * f->volumeID_fields.bytes_per_sector;
+	unsigned long sectorBytes = sectors * f->volumeID_fields.bytes_per_sector;
+	unsigned long dir_entryBytes = dir_entries * 32; // because of fat32
+	return clusterBytes + sectorBytes + dir_entryBytes + f->data_begin;
+}
+
+/*
+ * finds next cluster, looking in FAT
+ * current_cluster the cluster index in DATA clusters
+ * return the next cluster index and -1 if there is no one (final cluster, bad index, ...)
+ */
+static int
+find_next_cluster(int current_cluster)
+{
+	// fat index = current cluster + 2
+	return get_fat_entry(current_cluster + 2) - 2;
+}
+
+static int
+get_fat_entry(int fat_index)
+{
+	// fat index ignores 4 bits of highest weight
+	fat_index = 0x0FFFFFFF & fat_index;
+	// values unused in cluster chain
+	if (fat_index < 2 || fat_index > 0x0FFFFFEF)
+		return -1;
+
+	return byte_array_to_int(DATA, f->fat_begin + fat_index, 4);
+}
 
  /* end of personal methods */
 
 /*
- * Reads one entry of directory
+ * Reads one entry of directory and store the stat in fillerdata
+ *
  */
 static int
-vfat_readdir(/* XXX add your code here, */fuse_fill_dir_t filler, void *fillerdata)
+vfat_readdir(/* XXX add your code here, */struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdata)
 {
 	/* this stat structure is used to store the properties of a file or directory
 	 * being read. It has to be passed as an argument to the filler function.
@@ -278,6 +406,21 @@ vfat_readdir(/* XXX add your code here, */fuse_fill_dir_t filler, void *fillerda
 	st.st_uid = mount_uid;
 	st.st_gid = mount_gid;
 	st.st_nlink = 1;
+
+	// TODO Read the dir entry pointed in dir
+	/*
+	Short Filename	0x00	11 Bytes
+	Attrib Byte	0x0B	8 Bits
+	First Cluster High	0x14	16 Bits
+	First Cluster Low	0x1A	16 Bits
+	File Size	0x1C	32 Bits
+	 */
+
+
+
+	// parse and store info in st
+	filler(fillerdata, "name from dir entry", &st, 0);
+	// increment dir_descr pointer
 	return (1);
 	/* XXX add your code here */
 }
