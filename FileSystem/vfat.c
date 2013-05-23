@@ -196,7 +196,7 @@ vfat_init(const char *dev)
 				"Got 0x%04.4X, expected 0xAA55", signature);
 	}
 
-/*
+
 //	Debug output
 	printf("bytesPerSector: %u\n"
 			"sectorsPerCluster: %u\n"
@@ -212,7 +212,7 @@ vfat_init(const char *dev)
 			f->volumeID_fields.sectors_per_fat,
 			f->volumeID_fields.root_cluster,
 			signature);
-*/
+
 }
 
 /* XXX add your code here */
@@ -260,6 +260,10 @@ static int r_read(int fdes,unsigned char *buffer, int offset, int byte_count) {
 		errx(1, "Error in read");
 	return result;
 }
+
+
+ /* end of personal methods */
+
 
 static int
 vfat_readdir(/* XXX add your code here, */fuse_fill_dir_t filler, void *fillerdata)
@@ -309,7 +313,12 @@ vfat_resolve(const char *path, struct stat *st)
 static int
 vfat_fuse_getattr(const char *path, struct stat *st)
 {
-	printf("vfat_fuse_getattr\n");
+	/*
+	 * - find directory of file
+	 *
+	 */
+
+	printf("vfat_fuse_getattr with path %s\n", path);
 	/* XXX add your code here */
 	return 0;
 }
@@ -318,7 +327,33 @@ static int
 vfat_fuse_readdir(const char *path, void *data,
 		  fuse_fill_dir_t filler, off_t offs, struct fuse_file_info *fi)
 {
-	printf("vfat_fuse_readdir\n");
+	printf("vfat_fuse_readdir with path %s\n", path);
+
+	/*
+	 * Specification:
+	 * path input A path to the directory we want information about
+	 * buf output buffer containing information about directory => here: data
+	 * filler input pointer to fuse_fill_dir_t function that is used to add entries to buffer (see below)
+	 * offset input offset in directory entries
+	 * fi input A struct fuse_file_info, contains detailed information why this readdir operation was invoked.
+	 * return output negated error number, or 0 if everything went OK
+	 */
+
+	/*
+	 * Useful info about filler param:
+	 *
+	 * Function to add an entry in a readdir() operation
+	 *
+	 * @param buf the buffer passed to the readdir() operation
+	 * @param name the file name of the directory entry
+	 * @param stat file attributes, can be NULL
+	 * @param off offset of the next entry or zero
+	 * @return 1 if buffer is full, zero otherwise
+	 *
+	 *
+	 * typedef int (*fuse_fill_dir_t) (void *buf, const char *name,
+				const struct stat *stbuf, off_t off);
+	 */
 
 
 
@@ -329,7 +364,7 @@ static int
 vfat_fuse_read(const char *path, char *buf, size_t size, off_t offs,
 	       struct fuse_file_info *fi)
 {
-	printf("vfat_fuse_readdir\n");
+	printf("vfat_fuse_read\n");
 	/* XXX add your code here */
 	return 0;
 }
