@@ -3,14 +3,13 @@
  *
  * Is it always the case that 1 fat entry is associated to 1 cluster ? (size field)
  *
+ * fuse_fill_dir_t Takes a name as parameter: short name or long name?
  */
 
 
 
 #define FUSE_USE_VERSION 26
 #define _GNU_SOURCE
-
-#define DATA f->fs_data
 
 #include <sys/types.h>
 #include <sys/mman.h>
@@ -26,13 +25,36 @@
 #include <string.h>
 #include <unistd.h>
 
-// Function prototypes
-static int byte_array_to_int(unsigned char *array, int offset, int length);
-static int r_read(int fdes,unsigned char *buffer, int offset, int byte_count);
-static unsigned long to_byte_address(int clusters, int sectors, int dir_entries);
-static int find_next_cluster(int current_cluster);
-static unsigned int get_fat_entry(unsigned int fat_index);
-//static int increment_dir_descr(struct vfat_dir_descr *dir);
+
+
+/* macros */
+#define DATA f->fs_data
+// direntries offsets
+#define SFN_OFFSET 0x0
+#define SFN_LENGTH 11
+#define ATTRIB_OFFSET 0xB
+#define ATTRIB_LENGTH 1
+#define RES_OFFSET 0xC
+#define RES_LENGTH 1
+#define CTMS_OFFSET 0xD
+#define CTMS_LENGTH 1
+#define CTT_OFFSET 0xE
+#define CTT_LENGTH 2
+#define CTD_OFFSET 0x10
+#define CTD_LENGTH 2
+#define ATD_OFFSET 0x12
+#define ATD_LENGTH 2
+#define CLUSHI_OFFSET 0x14
+#define CLUSHI_LENGTH 2
+#define MTT_OFFSET 0x16
+#define MTT_LENGTH 2
+#define MTD_OFFSET 0x18
+#define MTD_LENGTH 2
+#define CLUSLO_OFFSET 0x1A
+#define CLUSLO_LENGTH 2
+#define SIZE_OFFSET 0x1C
+#define SIZE_LENGTH 4
+
 
 struct vfat_super {
 	uint8_t		res1[3];
@@ -135,6 +157,18 @@ struct vfat_dir_descr {
 	// dir entry index in cluster
 	int de_index;
 };
+
+
+// Function prototypes
+static int byte_array_to_int(unsigned char *array, int offset, int length);
+static int r_read(int fdes,unsigned char *buffer, int offset, int byte_count);
+static unsigned long to_byte_address(int clusters, int sectors, int dir_entries);
+static int find_next_cluster(int current_cluster);
+static unsigned int get_fat_entry(unsigned int fat_index);
+static int increment_dir_descr(struct vfat_dir_descr *dir); // TODO try to decomment this and correct errors
+static char *read_lfn(struct vfat_dir_descr *dir);
+static void read_dir_entry(struct vfat_dir_descr *dir, struct vfat_direntry *direntry);
+
 
 struct vfat vfat_info, *f = &vfat_info;
 iconv_t iconv_utf16;
@@ -304,8 +338,6 @@ r_read(int fdes,unsigned char *buffer, int offset, int byte_count)
  * This updates the cluster index of dir descr if needed.
  *
  * if the end of directory is reached, returns 0, returns 1 otherwise.
- *
- * TODO problems with prototype
  */
 
 static int
@@ -343,8 +375,8 @@ increment_dir_descr(struct vfat_dir_descr *dir)
 				// de_index value does not matter when current_cluster == -1
 				return 0;
 			}
-		}
-	}
+		} // switched to next cluster
+	} // end while
 	return 1;
 }
 
@@ -373,8 +405,8 @@ find_next_cluster(int current_cluster)
 	return get_fat_entry(current_cluster + 2) - 2;
 }
 
-static int
-get_fat_entry(int fat_index)
+static unsigned int
+get_fat_entry(unsigned int fat_index)
 {
 	// fat index ignores 4 bits of highest weight
 	fat_index = 0x0FFFFFFF & fat_index;
@@ -385,28 +417,22 @@ get_fat_entry(int fat_index)
 	return byte_array_to_int(DATA, f->fat_begin + fat_index, 4);
 }
 
- /* end of personal methods */
-
-/*
- * Reads one entry of directory and store the stat in fillerdata
- *
- */
-static int
-vfat_readdir(/* XXX add your code here, */struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdata)
+static char *
+read_lfn(struct vfat_dir_descr *dir)
 {
-	/* this stat structure is used to store the properties of a file or directory
-	 * being read. It has to be passed as an argument to the filler function.
-	 */
-	struct stat st;
-	void *buf = NULL; // we do not have to use this buf variable (according to the forum)
-	struct vfat_direntry *e;
-	char *name;
+	//TODO implement
 
-	memset(&st, 0, sizeof(st));
-	st.st_uid = mount_uid;
-	st.st_gid = mount_gid;
-	st.st_nlink = 1;
+	//for now, just skip lfn
+	char attrib_byte = DATA[to_byte_address(dir->current_cluster, 0, dir->de_index)+ATTRIB_OFFSET];
+	while ((attrib_byte&VFAT_ATTR_LFN) == VFAT_ATTR_LFN) {
+		increment_dir_descr(dir);
+	}
+	return NULL;
+}
 
+static void
+read_dir_entry(struct vfat_dir_descr *dir, struct vfat_direntry *direntry)
+{
 	// TODO Read the dir entry pointed in dir
 	/*
 	Short Filename	0x00	11 Bytes
@@ -415,16 +441,69 @@ vfat_readdir(/* XXX add your code here, */struct vfat_dir_descr *dir, fuse_fill_
 	First Cluster Low	0x1A	16 Bits
 	File Size	0x1C	32 Bits
 	 */
+	int i;
+	// copies sfn into direntry nameext
+	for (i=0; i<11; i++) {
+		direntry->nameext[i] = DATA[SFN_OFFSET+i+to_byte_address(
+				dir->current_cluster,
+				0,
+				dir->de_index)];
+	}
+	direntry->attr = DATA[ATTRIB_OFFSET+to_byte_address(
+			dir->current_cluster,
+			0,
+			dir->de_index)];
 
+}
 
+ /* end of personal methods */
 
-	// parse and store info in st
-	filler(fillerdata, "name from dir entry", &st, 0);
-	// increment dir_descr pointer
+/*
+ * Reads one entry of directory and store the stat in fillerdata
+ * Returns 1 if a new dir_entry was successfully added, 0 else
+ */
+static int
+vfat_readdir(/* XXX add your code here, */struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdata)
+{
+	if (dir->current_cluster == -1)
+		return 0;
+
+	/* this stat structure is used to store the properties of a file or directory
+	 * being read. It has to be passed as an argument to the filler function.
+	 */
+	struct stat st;
+	void *buf = NULL; // we do not have to use this buf variable (according to the forum)
+	struct vfat_direntry e;
+	char *name = NULL;
+
+	memset(&st, 0, sizeof(st));
+	st.st_uid = mount_uid;
+	st.st_gid = mount_gid;
+	st.st_nlink = 1;
+	char attrib_byte = DATA[to_byte_address(dir->current_cluster, 0, dir->de_index)+ATTRIB_OFFSET];
+
+	// check validity
+	if ((attrib_byte&VFAT_ATTR_INVAL) != 0) {
+		// do nothing and go to next
+		// if we can increment dir, then we try to read the next dir entry, return 0 else.
+		return increment_dir_descr(dir) && vfat_readdir(dir, filler, fillerdata);
+	}
+
+	// parse long file name
+	if ((attrib_byte&VFAT_ATTR_LFN) == VFAT_ATTR_LFN) {
+		name = read_lfn(dir);
+	}
+
+	// parse info
+	read_dir_entry(dir, &e);
+
+	// store info in st
+	int success = filler(fillerdata, name, &st, 0)==0;
+	// increment dir_descr pointer if data was successfully added to buffer
+	success = success && increment_dir_descr(dir);
 	return (1);
 	/* XXX add your code here */
 }
-
 /*
  * Takes a vfat_search_data, a name and a stat associated to this name.
  * If the name of search data match to name, then the content of the pointer
@@ -502,7 +581,22 @@ vfat_fuse_readdir(const char *path, void *data,
 				const struct stat *stbuf, off_t off);
 	 */
 
+	/*
+	 * Important note :
+	 *
+	 * we can simply ignore offset and use 0 wherever
+	 * offset is used (filler function especially)
+	 *
+	 * If we want to use it, we have to transfer it in vfat_dir_descr
+	 * into corresponding indexes
+	 *
+	 */
 
+
+	/* TODO
+	 * Resolve path (create corresponding dir_descr)
+	 * while(
+	 */
 
 	return 0;
 }
