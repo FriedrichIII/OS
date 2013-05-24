@@ -36,6 +36,8 @@
 /* macros */
 #define DATA f->fs_data
 #define GET_ENTRY_FIELD(DIR, OFFSET, LENGTH) byte_array_to_int(DATA, to_byte_address(DIR->current_cluster, 0, DIR->de_index)+OFFSET, LENGTH)
+#define AL_IR_FLAGS S_IRUSR | S_IRGRP | S_IROTH
+#define AL_IX_FLAGS S_IXUSR | S_IXGRP | S_IXOTH
 // direntries offsets
 #define SFN_OFFSET 0x0
 #define SFN_LENGTH 11
@@ -307,7 +309,7 @@ vfat_init(const char *dev)
 			* volumeID_fields->bytes_per_sector;
 
 //	Debug output
-//	printf("bytesPerSector: %u\n"
+	printf("bytesPerSector: %u\n"
 			"sectorsPerCluster: %u\n"
 			"reservedSectors: %u\n"
 			"numberOfFATs: %u\n"
@@ -735,7 +737,12 @@ vfat_readdir(struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdat
 	make_timespec(&st.st_atim, e.atime_date, 0, 0);
 	make_timespec(&st.st_mtim, e.mtime_date, e.mtime_time, 0);
 	make_timespec(&st.st_ctim, e.ctime_date, e.ctime_time, e.ctime_time);
-	st.st_mode = (e.attr & VFAT_ATTR_DIR) ? S_IFDIR : S_IFREG;
+	if (e.attr & VFAT_ATTR_DIR) {
+		st.st_mode = S_IFDIR | AL_IX_FLAGS;
+	} else {
+		st.st_mode = S_IFREG;
+	}
+	st.st_mode = st.st_mode | AL_IR_FLAGS;
 	st.st_ino = (e.cluster_hi<<(CLUSHI_LENGTH*8)) + e.cluster_lo;
 
 
