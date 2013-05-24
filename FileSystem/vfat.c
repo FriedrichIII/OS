@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 
 
@@ -60,6 +61,21 @@
 #define CLUSLO_LENGTH 2
 #define SIZE_OFFSET 0x1C
 #define SIZE_LENGTH 4
+
+// time mask
+#define SEC_MASK 0x001F
+#define SEC_SHFT 0
+#define MIN_MASK 0x07E0
+#define MIN_SHFT 5
+#define HOU_MASK 0xF800
+#define HOU_SHFT 11
+#define DAY_MASK 0x001F
+#define DAY_SHFT 0
+#define MON_MASK 0x01E0
+#define MON_SHFT 5
+#define YEA_MASK 0xFE00
+#define YEA_SHFT 7
+
 
 
 struct vfat_super {
@@ -166,8 +182,9 @@ struct vfat_dir_descr {
 
 
 // Function prototypes
+
+//static int r_read(int fdes,unsigned char *buffer, int offset, int byte_count); // Unused
 static unsigned int byte_array_to_int(unsigned char *array, int offset, int length);
-static int r_read(int fdes,unsigned char *buffer, int offset, int byte_count);
 static unsigned long to_byte_address(int clusters, int sectors, int dir_entries);
 static int find_next_cluster(int current_cluster);
 static unsigned int get_fat_entry(unsigned int fat_index);
@@ -176,6 +193,7 @@ static char *read_lfn(struct vfat_dir_descr *dir);
 static void read_dir_entry(struct vfat_dir_descr *dir, struct vfat_direntry *direntry);
 static void interpret_sfn(const char *name, const char *ext, char *buf);
 static void reset_dir_descr(struct vfat_dir_descr *dir);
+static struct timespec *make_timespec(struct timespec *buff, int date, int time, int ms);
 
 
 struct vfat vfat_info, *f = &vfat_info;
@@ -323,7 +341,6 @@ byte_array_to_int(unsigned char *array, int offset, int length)
  * int byte_count input number of bytes to be read in file
  * int return output number of bytes effectively read in file.
  *
- */
 static int
 r_read(int fdes,unsigned char *buffer, int offset, int byte_count)
 {
@@ -336,6 +353,7 @@ r_read(int fdes,unsigned char *buffer, int offset, int byte_count)
 		errx(1, "Error in read");
 	return result;
 }
+ */
 
 /*
  * Increments dir entry index in dir descriptor up to the next valid
@@ -450,12 +468,6 @@ read_lfn(struct vfat_dir_descr *dir)
 		attrib_byte = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, dir->de_index);
 	} while((attrib_byte & VFAT_ATTR_LFN) == VFAT_ATTR_LFN);
 
-	//for now, just skip lfn
-	char attrib_byte = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, dir->de_index);
-	while ((attrib_byte & VFAT_ATTR_LFN) == VFAT_ATTR_LFN) {
-		attrib_byte = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, dir->de_index);
-		increment_dir_descr(dir);
-	}
 	return NULL;
 }
 
@@ -526,6 +538,24 @@ reset_dir_descr(struct vfat_dir_descr *dir)
 	dir->current_cluster = dir->start_cluster;
 	dir->de_index = 0;
 }
+
+
+static struct timespec *
+make_timespec(struct timespec *buff, int date, int time, int ms)
+{
+	struct tm tm_time;
+	memset(&tm_time, 0, sizeof(tm_time));
+	tm_time.tm_sec = ((time&SEC_MASK)>>SEC_SHFT) * 2 + ms/100;
+	tm_time.tm_min = ((time&MIN_MASK)>>MIN_SHFT);
+	tm_time.tm_hour = ((time&HOU_MASK)>>HOU_SHFT);
+	tm_time.tm_mday = ((date&DAY_MASK)>>DAY_SHFT);
+	tm_time.tm_mon = ((date&MON_MASK)>>MON_SHFT)-1;
+	tm_time.tm_year = ((date&YEA_MASK)>>YEA_SHFT) + 1980 - 1900;
+
+	buff->tv_sec = mktime(&tm_time);
+	buff->tv_nsec = (ms%100)*10*1000*1000;
+	return buff;
+}
  /* end of personal methods */
 
 /*
@@ -543,7 +573,7 @@ vfat_readdir(struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdat
 	/* this stat structure is used to store the properties of a file or directory
 	 * being read. It has to be passed as an argument to the filler function.
 	 */
-	void *buf = NULL; // we do not have to use this buf variable (according to the forum)
+//	void *buf = NULL; // we do not have to use this buf variable (according to the forum)
 	struct vfat_direntry e;
 	char *name = NULL;
 	uint8_t attrib_byte = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, ATTRIB_LENGTH);
@@ -573,13 +603,20 @@ vfat_readdir(struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdat
 
 	// TODO Check time format
 	// see http://fr.wikipedia.org/wiki/File_Allocation_Table#Root_Directory for e time fields interpretation
+	/*
+	struct timespec
+	  {
+	    __time_t tv_sec;		// Seconds.
+	    long int tv_nsec;		// Nanoseconds.
+	  };
+	*/
 	st.st_size = e.size;
-	struct timespec test;
-	st.st_atim = test;//e.atime_date;
-//	st.st_mtim = e.mtime_date<<MTD_LENGTH*8 + e.mtime_time;
-//	st.st_ctim = e.ctime_date<<CTD_LENGTH*8 + e.ctime_time;
+
+	make_timespec(&st.st_atim, e.atime_date, 0, 0);
+	make_timespec(&st.st_mtim, e.mtime_date, e.mtime_time, 0);
+	make_timespec(&st.st_ctim, e.ctime_date, e.ctime_time, e.ctime_time);
 	st.st_mode = (e.attr & VFAT_ATTR_DIR) ? S_IFDIR : S_IFREG;
-	st.st_ino = e.cluster_hi<<(CLUSHI_LENGTH*8)+e.cluster_lo;
+	st.st_ino = (e.cluster_hi<<(CLUSHI_LENGTH*8)) + e.cluster_lo;
 
 
 	// interprets short file name
@@ -644,7 +681,7 @@ vfat_search_entry(void *data, const char *name, const struct stat *st, off_t off
  *
  * path the path to be resolved
  * st file/dir datas that will contain found data. Unspecified when return 0
- * return 1 if data was found
+ * return 0 if data was found error number else
  *
  */
 static int
@@ -657,31 +694,38 @@ vfat_resolve(const char *path, struct stat *st)
 	curr_dir.current_cluster = 0;
 	curr_dir.de_index = 0;
 
-	char *parsed_path = strtok(path, "/");
+	// creates a copy of path to use strtok
+	char *path_copy = malloc(strlen(path)*sizeof(char)+1);
+	path_copy = strncpy(path_copy, path, sizeof(path));
+	path_copy[sizeof(path)] = '\0';
 
-	while (parsed_path != NULL) {
+	char *path_entry = strtok(path_copy, "/");
+
+	while (path_entry != NULL) {
 		// set search data we are searching in curr_dir
-		sd.name = parsed_path;
+		sd.name = path_entry;
 		sd.found = 0;
 		// reset st fields
 		memset(st, 0, sizeof(*st));
 		sd.st = st;
 
 		// search parsed_path entry in curr_dir
-		// sd.found updated
-		// corresponding stat stored in sd.st
-		vfat_readdir(&curr_dir, vfat_search_entry, &sd);
+		// reads dir until sd.st is set or end of dir reached
+		while(vfat_readdir(&curr_dir, vfat_search_entry, &sd));
+		// sd.found updated, corresponding stat stored in sd.st
 
 		// go to next level of path
-		parsed_path = strtok(NULL, "/");
+		path_entry = strtok(NULL, "/");
 
 		// fail if path not found or entry found is not dir and end of path not reached
-		if (!sd.found
-				|| (parsed_path!=NULL && !S_ISDIR(sd.st->st_mode))) {
-			return 0;
+		if (!sd.found) {
+			return ENOENT;
+		}
+		if (path_entry!=NULL && !S_ISDIR(sd.st->st_mode)) {
+			return ENOTDIR;
 		}
 
-		if (parsed_path!=NULL) {
+		if (path_entry!=NULL) {
 			// update curr_dir to next found dir
 			// start cluster of data = fat entry index - 2
 			curr_dir.start_cluster = sd.st->st_ino - 2;
@@ -689,11 +733,14 @@ vfat_resolve(const char *path, struct stat *st)
 		}
 	}
 
-	return 1;
+	free(path_copy);
+
+	return 0;
 }
 
 /*
  * TODO implement vfat_fuse_getattr
+ *
  */
 static int
 vfat_fuse_getattr(const char *path, struct stat *st)
@@ -703,16 +750,19 @@ vfat_fuse_getattr(const char *path, struct stat *st)
 	 * - looks for all dir entry in dir
 	 * - stat is filled with corresponding direntry.
 	 */
-
 	printf("vfat_fuse_getattr with path %s\n", path);
-	return 0;
+	return -vfat_resolve(path, st);
 }
 
+/*
+ * return negated error number, 0 if ok
+ */
 static int
 vfat_fuse_readdir(const char *path, void *data,
 		  fuse_fill_dir_t filler, off_t offs, struct fuse_file_info *fi)
 {
-
+	if (path==NULL || path[0]=='\0')
+		return -ENOENT;
 	/*
 	 * Specification:
 	 * path input A path to the directory we want information about
@@ -750,15 +800,22 @@ vfat_fuse_readdir(const char *path, void *data,
 	 *
 	 */
 
-	/*
-	 * TODO
-	 *
-	 * parse path and recursively resolve path (see search entry comments)
-	 * path parsing should be in function resolve or something like this
-	 *
-	 * fill data using vfat_readdir
-	 *
-	 */
+	// TODO consider root!
+	// resolve path
+	struct stat search_st;
+	int resolve_error = vfat_resolve(path, &search_st);
+	if (resolve_error!=0)
+		return -resolve_error;
+
+	// check resolved st is a directory
+	if(!S_ISDIR(search_st.st_mode))
+		return -ENOTDIR;
+
+	// read dir
+	struct vfat_dir_descr dir_to_read;
+	dir_to_read.start_cluster = search_st.st_ino;
+	reset_dir_descr(&dir_to_read);
+	while(vfat_readdir(&dir_to_read, filler, data));
 
 	return 0;
 }
