@@ -968,6 +968,39 @@ vfat_fuse_read(const char *path, char *buf, size_t size, off_t offs,
 	int resolve_error = vfat_resolve(path, &read_st);
 	if (resolve_error!= 0) return -resolve_error;
 
+	//if(!S_ISREG(read_st.st_mode)) return
+	//we compute the begin sector:
+	int BPC = f->volumeID_fields.bytes_per_sector * f->volumeID_fields.sectors_per_cluster;
+	int clusterNbr = offs / BPC;
+	int finalOffs = offs - clusterNbr * BPC;
+
+	int startAddress = finalOffs;
+	__ino_t inode = read_st.st_ino;
+	__ino_t tmpInode = 0;
+	while(clusterNbr > 0 && tmpInode != -1){
+		tmpInode= get_fat_entry(inode);
+		if(tmpInode != -1){
+			inode = tmpInode;
+		}
+		clusterNbr--;
+	}
+
+	startAddress += to_byte_address(inode-2, 0, 0);
+
+	int clusterToRead = (size + finalOffs )/ BPC;
+	if(clusterToRead < 1){
+		strncpy(buf, DATA+startAddress+finalOffs, size);
+	}else if(clusterToRead >1){
+		int bytesCopied=0;
+		int Address=DATA+startAddress+finalOffs;
+		while(bytesCopied<size){
+			strncpy(buf+bytesCopied, Address, size-bytesCopied-finalOffs);
+			finalOffs = 0;
+		}
+
+	}
+
+
 
 	printf("vfat_fuse_read\n");
 	return 0;
