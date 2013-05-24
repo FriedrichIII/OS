@@ -389,19 +389,22 @@ increment_dir_descr(struct vfat_dir_descr *dir)
 	// check that de_index is not outside indicated cluster
 	// or dir hasn't already been read until the end
 	if (dir->de_index >= dir_entries_per_cluster
-			|| dir->current_cluster==-1)
+			|| dir->current_cluster==-1) {
+		printf("increment dir descr: unvalid descr\n");
 		return 0;
+	}
 
-	// deleted entry
-	unsigned char entryFirstByte = 0xE5;
+	unsigned char entryFirstByte = DATA[to_byte_address(dir->current_cluster, 0, dir->de_index)];
+
+	if (entryFirstByte == 0) {
+		dir->current_cluster=-1;
+		return 0;
+	}
 
 	// while (deleted entry)
-	while (entryFirstByte == 0xE5) {
-		entryFirstByte = DATA[to_byte_address(dir->current_cluster, 0, dir->de_index)];
-
+	do {
 		// check if current entry is not end of dir
-		if (entryFirstByte == 0)
-			return 0;
+
 		dir->de_index += 1;
 
 		// test if end of cluster reached
@@ -415,7 +418,13 @@ increment_dir_descr(struct vfat_dir_descr *dir)
 				return 0;
 			}
 		} // switched to next cluster
-	} // end while
+		entryFirstByte = DATA[to_byte_address(dir->current_cluster, 0, dir->de_index)];
+
+		if (entryFirstByte == 0) {
+			dir->current_cluster=-1;
+			return 0;
+		}
+	} while (entryFirstByte == 0xE5);// end while
 	return 1;
 }
 
@@ -441,7 +450,8 @@ static int
 find_next_cluster(int current_cluster)
 {
 	// fat index = current cluster + 2
-	return get_fat_entry(current_cluster + 2) - 2;
+	unsigned int fat_entry = get_fat_entry(current_cluster + 2);
+	return fat_entry==-1 ? -1: fat_entry-2;
 }
 
 static unsigned int
@@ -492,10 +502,11 @@ read_lfn(struct vfat_dir_descr *dir)
 static void
 read_dir_entry(struct vfat_dir_descr *dir, struct vfat_direntry *direntry)
 {
+	printf("read dir entry...\n");
 	int i;
 	// copies sfn into direntry nameext
-	for (i=0; i<11; i++) {
-		direntry->nameext[i] = GET_ENTRY_FIELD(dir, SFN_OFFSET, SFN_LENGTH);
+	for (i=0; i<SFN_LENGTH; i++) {
+		direntry->nameext[i] = GET_ENTRY_FIELD(dir, SFN_OFFSET + (i*BYTE), BYTE);
 	}
 	// fills all other fields
 	direntry->attr = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, ATTRIB_LENGTH);
@@ -509,6 +520,7 @@ read_dir_entry(struct vfat_dir_descr *dir, struct vfat_direntry *direntry)
 	direntry->mtime_date = GET_ENTRY_FIELD(dir, MTD_OFFSET, MTD_LENGTH);
 	direntry->cluster_lo = GET_ENTRY_FIELD(dir, CLUSLO_OFFSET, CLUSLO_LENGTH);
 	direntry->size = GET_ENTRY_FIELD(dir, SIZE_OFFSET, SIZE_LENGTH);
+
 }
 
 /*
@@ -519,6 +531,17 @@ static void
 interpret_sfn(const char *name, const char *ext, char *buf)
 {
 	// skips spaces at the end
+	printf("interpret: name = ");
+	int k;
+	for(k=0; k<8; k++) {
+		printf("%1.1X ", (unsigned char) name[k]);
+	}
+	printf("ext = ");
+	for(k=0; k<3; k++) {
+		printf("%1.1X ", (unsigned char) ext[k]);
+	}
+	printf("\n");
+
 	int name_end = 7;
 	while((name_end >= 0) && (name[name_end]==' ')) name_end--;
 
@@ -538,8 +561,11 @@ interpret_sfn(const char *name, const char *ext, char *buf)
 	for (i=1; i<=name_end; i++) {
 		buf[i] = name[i];
 	}
-
 	// indexes [name_end+1; name_end+1]
+	if (ext_end == -1) {
+		buf[name_end+1] = '\0';
+		return;
+	}
 	buf[name_end+1] = '.';
 
 	// indexes [name_end+2; name_end+2+ext_end]
@@ -549,7 +575,11 @@ interpret_sfn(const char *name, const char *ext, char *buf)
 
 	// indexes [name_end+2+ext_end+1; name_end+2+ext_end+1]
 	buf[name_end+ext_end+3] = '\0';
-	printf("");
+	printf("name: ");
+	for(k=0; k<name_end+ext_end+3; k++) {
+		printf("%1.1X ", (unsigned char) buf[k]);
+	}
+	printf("\n");
 }
 
 // set dir to point on it's first entry, according to start_cluster field
@@ -610,6 +640,10 @@ static int
 vfat_readdir(struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdata)
 {
 	printf("reading dir...\n");
+
+	printf("dir_descr->current_cluster = %d\n", dir->current_cluster);
+	printf("dir_descr->de_index = %d\n", dir->de_index);
+	// test that dir is not at end.
 	if (dir->current_cluster == -1)
 		return 0;
 
@@ -619,7 +653,7 @@ vfat_readdir(struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdat
 //	void *buf = NULL; // we do not have to use this buf variable (according to the forum)
 	struct vfat_direntry e;
 	char *name = NULL;
-	uint8_t attrib_byte = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, ATTRIB_LENGTH);
+	unsigned char attrib_byte = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, ATTRIB_LENGTH);
 	printf("attrib byte = %x\n", attrib_byte);
 
 
@@ -735,7 +769,7 @@ vfat_search_entry(void *data, const char *name, const struct stat *st, off_t off
 static int
 vfat_resolve(const char *path, struct stat *st)
 {
-	printf("resolving path %s:\n", path);
+	printf("vfat_resolve::resolving path %s:\n", path);
 	struct vfat_search_data sd;
 
 	struct vfat_dir_descr curr_dir;
@@ -754,6 +788,7 @@ vfat_resolve(const char *path, struct stat *st)
 	path_copy = strncpy(path_copy, path, sizeof(path));
 	path_copy[sizeof(path)] = '\0';
 
+	// value to search in root dir
 	char *path_entry = strtok(path_copy, "/");
 
 	/* if path = "/" (root dir) then
@@ -764,7 +799,7 @@ vfat_resolve(const char *path, struct stat *st)
 	 */
 	printf("Before resolving path, path_entry is %s\n", path_entry);
 	while (path_entry != NULL) {
-		printf("searching entry of name %s in inode %u\n", path_entry, st->st_ino);
+		printf("searching entry of name %s in inode %u\n", path_entry, (unsigned int) st->st_ino);
 		// set search data we are searching in curr_dir
 		sd.name = path_entry;
 		sd.found = 0;
@@ -798,6 +833,8 @@ vfat_resolve(const char *path, struct stat *st)
 
 	free(path_copy);
 
+	printf("resolve_path sucessfully finished\n");
+
 	return 0;
 }
 
@@ -810,7 +847,9 @@ vfat_fuse_getattr(const char *path, struct stat *st)
 	 * - stat is filled with corresponding direntry.
 	 */
 	printf("vfat_fuse_getattr with path %s\n", path);
-	return -vfat_resolve(path, st);
+	int result = -vfat_resolve(path, st);
+	printf("vfat_fuse_getattr finished with value: %d\n", result);
+	return result;
 }
 
 /*
@@ -873,7 +912,7 @@ vfat_fuse_readdir(const char *path, void *data,
 
 	// read dir
 	struct vfat_dir_descr dir_to_read;
-	dir_to_read.start_cluster = search_st.st_ino;
+	dir_to_read.start_cluster = search_st.st_ino - 2;
 	reset_dir_descr(&dir_to_read);
 	printf("reading dir with inode %u\n", dir_to_read.current_cluster);
 	while(vfat_readdir(&dir_to_read, filler, data));
