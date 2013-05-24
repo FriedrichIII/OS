@@ -204,7 +204,7 @@ static unsigned long to_byte_address(int clusters, int sectors, int dir_entries)
 static int find_next_cluster(int current_cluster);
 static unsigned int get_fat_entry(unsigned int fat_index);
 static int increment_dir_descr(struct vfat_dir_descr *dir);
-static char *read_lfn(struct vfat_dir_descr *dir);
+static char *read_lfn(struct vfat_dir_descr *dir, char *buff);
 static void read_dir_entry(struct vfat_dir_descr *dir, struct vfat_direntry *direntry);
 static void interpret_sfn(const char *name, const char *ext, char *buf);
 static void reset_dir_descr(struct vfat_dir_descr *dir);
