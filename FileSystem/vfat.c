@@ -820,8 +820,9 @@ vfat_resolve(const char *path, struct stat *st)
 
 	// creates a copy of path to use strtok
 	char *path_copy = malloc((strlen(path)+1)*sizeof(char));
-	path_copy = strncpy(path_copy, path, sizeof(path));
-	path_copy[sizeof(path)] = '\0';
+	path_copy = strncpy(path_copy, path, strlen(path));
+	path_copy[strlen(path)] = '\0';
+	printf("path_copy = %s\n", path_copy);
 
 	// value to search in root dir
 	char *path_entry = strtok(path_copy, "/");
