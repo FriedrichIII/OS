@@ -76,6 +76,21 @@
 #define YEA_MASK 0xFE00
 #define YEA_SHFT 7
 
+// lfn_direntries offset
+#define SEQ_OFFSET 0x0
+#define NAM1_OFFSET 0x1
+#define NAM1_SIZE 5
+#define RES1_OFFSET 0xC
+#define CSM_OFFSET 0xD
+#define NAM2_OFFSET 0xE
+#define NAM2_SIZE 6
+#define RES2_OFFSET 0x1A
+#define NAM3_OFFSET 0x1C
+#define NAM3_SIZE 2
+// one byte
+#define BYTE 1
+// 2 bytes
+#define WORD 2
 
 
 struct vfat_super {
@@ -194,6 +209,7 @@ static void read_dir_entry(struct vfat_dir_descr *dir, struct vfat_direntry *dir
 static void interpret_sfn(const char *name, const char *ext, char *buf);
 static void reset_dir_descr(struct vfat_dir_descr *dir);
 static struct timespec *make_timespec(struct timespec *buff, int date, int time, int ms);
+static void read_dir_entry_lfn(struct vfat_dir_descr *dir, struct vfat_direntry_lfn *direntry_lfn);
 
 
 struct vfat vfat_info, *f = &vfat_info;
@@ -518,8 +534,12 @@ interpret_sfn(const char *name, const char *ext, char *buf)
 		return;
 	}
 	int i;
-	// indexes [0; name_end]
-	for (i=0; i<=name_end; i++) {
+	// indexes [0; 0]
+	// if first
+	buf[0] = name[0] == 0x0E? 0x5E : name[0];
+
+	// indexes [1; name_end]
+	for (i=1; i<=name_end; i++) {
 		buf[i] = name[i];
 	}
 
@@ -559,6 +579,27 @@ make_timespec(struct timespec *buff, int date, int time, int ms)
 	buff->tv_sec = mktime(&tm_time);
 	buff->tv_nsec = (ms%100)*10*1000*1000;
 	return buff;
+}
+
+
+static void
+read_dir_entry_lfn(struct vfat_dir_descr *dir, struct vfat_direntry_lfn *direntry_lfn)
+{
+	int i;
+	direntry_lfn->seq = GET_ENTRY_FIELD(dir, SEQ_OFFSET, BYTE);
+	for (i=0; i<NAM1_SIZE; i++) {
+		direntry_lfn->name1[i] = GET_ENTRY_FIELD(dir, NAM1_OFFSET+i*WORD, WORD);
+	}
+	direntry_lfn->attr = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, BYTE);
+	direntry_lfn->res1 = GET_ENTRY_FIELD(dir, RES1_OFFSET, BYTE);
+	direntry_lfn->csum = GET_ENTRY_FIELD(dir, CSM_OFFSET, BYTE);
+	for(i=0; i<NAM2_SIZE; i++) {
+		direntry_lfn->name2[i] = GET_ENTRY_FIELD(dir, NAM2_OFFSET+i*WORD, WORD);
+	}
+	direntry_lfn->res2 = GET_ENTRY_FIELD(dir, RES2_OFFSET, WORD);
+	for (i=0; i<NAM3_SIZE; i++) {
+		direntry_lfn->name3[i] = GET_ENTRY_FIELD(dir, NAM3_OFFSET+i*WORD, WORD);
+	}
 }
  /* end of personal methods */
 
@@ -605,15 +646,6 @@ vfat_readdir(struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdat
 	st.st_gid = mount_gid;
 	st.st_nlink = 1;
 
-	// TODO Check time format
-	// see http://fr.wikipedia.org/wiki/File_Allocation_Table#Root_Directory for e time fields interpretation
-	/*
-	struct timespec
-	  {
-	    __time_t tv_sec;		// Seconds.
-	    long int tv_nsec;		// Nanoseconds.
-	  };
-	*/
 	st.st_size = e.size;
 
 	make_timespec(&st.st_atim, e.atime_date, 0, 0);
@@ -694,9 +726,15 @@ vfat_resolve(const char *path, struct stat *st)
 	struct vfat_search_data sd;
 
 	struct vfat_dir_descr curr_dir;
+	// root dir initialisation
 	curr_dir.start_cluster = 0;
 	curr_dir.current_cluster = 0;
 	curr_dir.de_index = 0;
+
+	// root dir stat (what we can know)
+	memset(st, 0, sizeof(*st));
+	st->st_ino = 2;
+	st->st_mode = S_IFDIR;
 
 	// creates a copy of path to use strtok
 	char *path_copy = malloc(strlen(path)*sizeof(char)+1);
@@ -705,6 +743,12 @@ vfat_resolve(const char *path, struct stat *st)
 
 	char *path_entry = strtok(path_copy, "/");
 
+	/* if path = "/" (root dir) then
+	 * path_entry == NULL
+	 * root attrib already set
+	 *
+	 * Thus everything is OK
+	 */
 	while (path_entry != NULL) {
 		// set search data we are searching in curr_dir
 		sd.name = path_entry;
@@ -742,10 +786,6 @@ vfat_resolve(const char *path, struct stat *st)
 	return 0;
 }
 
-/*
- * TODO implement vfat_fuse_getattr
- *
- */
 static int
 vfat_fuse_getattr(const char *path, struct stat *st)
 {
@@ -754,7 +794,7 @@ vfat_fuse_getattr(const char *path, struct stat *st)
 	 * - looks for all dir entry in dir
 	 * - stat is filled with corresponding direntry.
 	 */
-	printf("vfat_fuse_getattr with path %s\n", path);
+//	printf("vfat_fuse_getattr with path %s\n", path);
 	return -vfat_resolve(path, st);
 }
 
@@ -804,7 +844,6 @@ vfat_fuse_readdir(const char *path, void *data,
 	 *
 	 */
 
-	// TODO consider root!
 	// resolve path
 	struct stat search_st;
 	int resolve_error = vfat_resolve(path, &search_st);
