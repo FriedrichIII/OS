@@ -456,6 +456,7 @@ read_lfn(struct vfat_dir_descr *dir)
 	char attrib_byte = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, ATTRIB_LENGTH);
 	while ((attrib_byte&VFAT_ATTR_LFN) == VFAT_ATTR_LFN) {
 		increment_dir_descr(dir);
+		attrib_byte = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, ATTRIB_LENGTH);
 	}
 	return NULL;
 }
@@ -737,9 +738,8 @@ vfat_fuse_getattr(const char *path, struct stat *st)
 	 * - looks for all dir entry in dir
 	 * - stat is filled with corresponding direntry.
 	 */
-
 	printf("vfat_fuse_getattr with path %s\n", path);
-	return 0;
+	return -vfat_resolve(path, st);
 }
 
 /*
@@ -785,16 +785,6 @@ vfat_fuse_readdir(const char *path, void *data,
 	 *
 	 * If we want to use it, we have to transfer it in vfat_dir_descr
 	 * into corresponding indexes
-	 *
-	 */
-
-	/*
-	 * TODO
-	 *
-	 * parse path and recursively resolve path (see search entry comments)
-	 * path parsing should be in function resolve or something like this
-	 *
-	 * fill data using vfat_readdir
 	 *
 	 */
 
