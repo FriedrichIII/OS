@@ -433,14 +433,33 @@ get_fat_entry(unsigned int fat_index)
 static char *
 read_lfn(struct vfat_dir_descr *dir)
 {
+	char attrib_byte;
+	/*
+	 * The max. filename length when LFN is used is
+	 * 255 UTF-16 characters. A code unit in UTF-16 is
+	 * 16 bits. Every char is represented with
+	 * one code unit (most of the time), or two (32 bits).
+	 * Therefore the max. filename length cannot exceed
+	 * 255 * 4 bytes = 1020 bytes.
+	 * (1021 for the '\0' ending character)
+	 */
+	char longFileName[1021];
+	do {
+
+		increment_dir_descr(dir);
+		attrib_byte = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, dir->de_index);
+	} while((attrib_byte & VFAT_ATTR_LFN) == VFAT_ATTR_LFN);
 
 	//for now, just skip lfn
-	char attrib_byte = DATA[to_byte_address(dir->current_cluster, 0, dir->de_index)+ATTRIB_OFFSET];
-	while ((attrib_byte&VFAT_ATTR_LFN) == VFAT_ATTR_LFN) {
+	char attrib_byte = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, dir->de_index);
+	while ((attrib_byte & VFAT_ATTR_LFN) == VFAT_ATTR_LFN) {
+		attrib_byte = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, dir->de_index);
 		increment_dir_descr(dir);
 	}
 	return NULL;
 }
+
+
 
 static void
 read_dir_entry(struct vfat_dir_descr *dir, struct vfat_direntry *direntry)
