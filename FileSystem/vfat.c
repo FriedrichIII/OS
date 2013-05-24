@@ -204,14 +204,14 @@ static unsigned long to_byte_address(int clusters, int sectors, int dir_entries)
 static int find_next_cluster(int current_cluster);
 static unsigned int get_fat_entry(unsigned int fat_index);
 static int increment_dir_descr(struct vfat_dir_descr *dir);
-static char *read_lfn(struct vfat_dir_descr *dir, char *buff);
+static char* read_lfn(struct vfat_dir_descr *dir, char* fileName);
 static void read_dir_entry(struct vfat_dir_descr *dir, struct vfat_direntry *direntry);
 static void interpret_sfn(const char *name, const char *ext, char *buf);
 static void reset_dir_descr(struct vfat_dir_descr *dir);
 static struct timespec *make_timespec(struct timespec *buff, int date, int time, int ms);
 static void read_dir_entry_lfn(struct vfat_dir_descr *dir, struct vfat_direntry_lfn *direntry_lfn);
 void LFNEntriesToFileName(struct vfat_direntry_lfn LFNEntries[], size_t numberOfEntries, char* fileName);
-void uint16ToChars(uint16_t value, char* bytes);
+char* uint16ToChars(uint16_t value, char* bytes);
 
 struct vfat vfat_info, *f = &vfat_info;
 iconv_t iconv_utf16;
@@ -512,18 +512,26 @@ void LFNEntriesToFileName(struct vfat_direntry_lfn LFNEntries[], size_t numberOf
 	char bytes[2];
 	unsigned short i;
 	for (i = numberOfEntries - 1 ; i >= 0; --i) {
-		strcpy(fileName, uint16ToChars(LFNEntries[i].name1, bytes));
-		strcpy(fileName, uint16ToChars(LFNEntries[i].name2, bytes));
-		strcpy(fileName, uint16ToChars(LFNEntries[i].name3, bytes));
+		int j;
+		for(j = 0; j < NAM1_SIZE; ++j) {
+			strcpy(fileName, uint16ToChars((LFNEntries[i].name1)[j], bytes));
+		}
+		for(j = 0; j < NAM2_SIZE; ++j) {
+			strcpy(fileName, uint16ToChars((LFNEntries[i].name2)[j], bytes));
+		}
+		for(j = 0; j < NAM3_SIZE; ++j) {
+			strcpy(fileName, uint16ToChars((LFNEntries[i].name3)[j], bytes));
+		}
 	}
 	strcpy(fileName, "\0");
 }
 
-void uint16ToChars(uint16_t value, char* bytes) {
+char* uint16ToChars(uint16_t value, char* bytes) {
 	char low = value & 0xFF;
 	char high = value >> 8;
 	bytes[0] = high;
 	bytes[1] = low;
+	return bytes;
 }
 
 static void
@@ -811,9 +819,10 @@ vfat_resolve(const char *path, struct stat *st)
 	st->st_mode = S_IFDIR;
 
 	// creates a copy of path to use strtok
-	char *path_copy = malloc(strlen(path)*sizeof(char)+1);
-	path_copy = strncpy(path_copy, path, sizeof(path));
-	path_copy[sizeof(path)] = '\0';
+	char *path_copy = malloc((strlen(path)+1)*sizeof(char));
+	path_copy = strncpy(path_copy, path, strlen(path));
+	path_copy[strlen(path)] = '\0';
+	printf("path_copy = %s\n", path_copy);
 
 	// value to search in root dir
 	char *path_entry = strtok(path_copy, "/");
