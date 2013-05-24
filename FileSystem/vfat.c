@@ -721,6 +721,7 @@ vfat_readdir(struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdat
 		return increment_dir_descr(dir) && vfat_readdir(dir, filler, fillerdata);
 	}
 
+
 	// parse info
 	read_dir_entry(dir, &e);
 
@@ -754,6 +755,7 @@ vfat_readdir(struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdat
 	// store info in buffer
 	int success = filler(fillerdata, name, &st, 0)==0;
 	// Hope this doesn't affect fillerdata content
+
 
 //	printf("filler function used, success is %d (unfilled buffer)\n", success);
 	// increment dir_descr pointer if data was successfully added to buffer
@@ -974,7 +976,46 @@ static int
 vfat_fuse_read(const char *path, char *buf, size_t size, off_t offs,
 	       struct fuse_file_info *fi)
 {
-//	printf("vfat_fuse_read\n");
+	printf("reading file at path %s...\n", path);
+	struct stat read_st;
+	int resolve_error = vfat_resolve(path, &read_st);
+	if (resolve_error!= 0) return -resolve_error;
+
+	//if(!S_ISREG(read_st.st_mode)) return
+	//we compute the begin sector:
+	int BPC = f->volumeID_fields.bytes_per_sector * f->volumeID_fields.sectors_per_cluster;
+	int clusterNbr = offs / BPC;
+	int finalOffs = offs - clusterNbr * BPC;
+
+	int startAddress = finalOffs;
+	__ino_t inode = read_st.st_ino;
+	__ino_t tmpInode = 0;
+	while(clusterNbr > 0 && tmpInode != -1){
+		tmpInode= get_fat_entry(inode);
+		if(tmpInode != -1){
+			inode = tmpInode;
+		}
+		clusterNbr--;
+	}
+
+	startAddress += to_byte_address(inode-2, 0, 0);
+	// TODO complete
+	int clusterToRead = (size + finalOffs )/ BPC;
+	if(clusterToRead < 1){
+		strncpy(buf, DATA+startAddress+finalOffs, size);
+	}else if(clusterToRead >1){
+		int bytesCopied=0;
+		int Address=DATA+startAddress+finalOffs;
+		while(bytesCopied<size){
+			strncpy(buf+bytesCopied, Address, size-bytesCopied-finalOffs);
+			finalOffs = 0;
+		}
+
+	}
+
+
+
+	printf("vfat_fuse_read\n");
 	return 0;
 }
 
