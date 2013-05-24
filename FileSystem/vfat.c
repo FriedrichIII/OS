@@ -202,7 +202,7 @@ struct vfat_dir_descr {
 static unsigned int byte_array_to_int(unsigned char *array, int offset, int length);
 static unsigned long to_byte_address(int clusters, int sectors, int dir_entries);
 static int find_next_cluster(int current_cluster);
-static unsigned int get_fat_entry(unsigned int fat_index);
+static int get_fat_entry(int fat_index);
 static int increment_dir_descr(struct vfat_dir_descr *dir);
 static char* read_lfn(struct vfat_dir_descr *dir, char* fileName);
 static void read_dir_entry(struct vfat_dir_descr *dir, struct vfat_direntry *direntry);
@@ -411,8 +411,11 @@ increment_dir_descr(struct vfat_dir_descr *dir)
 		// test if end of cluster reached
 		if (dir->de_index >= dir_entries_per_cluster) {
 			// lookup for next cluster in FAT
+			printf("increment_dir_descr: moving from cluster %d", dir->current_cluster);
 			dir->current_cluster = find_next_cluster(dir->current_cluster);
 			dir->de_index = 0;
+			printf(" to cluster %d\n", dir->current_cluster);
+
 			// last cluster reached when next_cluster == -1
 			if (dir->current_cluster == -1) {
 				// de_index value does not matter when current_cluster == -1
@@ -451,12 +454,12 @@ static int
 find_next_cluster(int current_cluster)
 {
 	// fat index = current cluster + 2
-	unsigned int fat_entry = get_fat_entry(current_cluster + 2);
+	int fat_entry = get_fat_entry(current_cluster + 2);
 	return fat_entry==-1 ? -1: fat_entry-2;
 }
 
-static unsigned int
-get_fat_entry(unsigned int fat_index)
+static int
+get_fat_entry(int fat_index)
 {
 	// fat index ignores 4 bits of highest weight
 	fat_index = 0x0FFFFFFF & fat_index;
@@ -464,7 +467,7 @@ get_fat_entry(unsigned int fat_index)
 	if (fat_index < 2 || fat_index > 0x0FFFFFEF)
 		return -1;
 
-	return byte_array_to_int(DATA, f->fat_begin + fat_index, 4);
+	return byte_array_to_int(DATA, f->fat_begin + (fat_index*4), 4);
 }
 
 /*
@@ -692,22 +695,21 @@ vfat_readdir(struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdat
 	unsigned char attrib_byte = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, ATTRIB_LENGTH);
 	printf("attrib byte = %x\n", attrib_byte);
 
-/*
+
 	// skip lfn
 	while(((attrib_byte&VFAT_ATTR_LFN) == VFAT_ATTR_LFN)
 			&& (increment_dir_descr(dir)!=0)) {
 		printf("skipping lfn...\n");
 		attrib_byte = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, ATTRIB_LENGTH);
 	}
-*/
-
+/*
 		// parse long file name
 	if ((attrib_byte&VFAT_ATTR_LFN) == VFAT_ATTR_LFN) {
 		is_sfn = 0;
 		printf("READ LFN CALLED\n");
 		read_lfn(dir, name);
 	}
-
+*/
 
 	// check validity
 	if ((attrib_byte&VFAT_ATTR_INVAL) != 0) {
