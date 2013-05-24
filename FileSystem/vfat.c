@@ -4,6 +4,11 @@
  * Is it always the case that 1 fat entry is associated to 1 cluster ? (size field)
  *
  * fuse_fill_dir_t Takes a name as parameter: short name or long name?
+ *
+ * is the conversion uint8_t <- int working just as "take least significant bits?"
+ * => yes and no sign subtilities!
+ *
+ * how has to be set time in st.st_?tim (which format)
  */
 
 
@@ -29,6 +34,7 @@
 
 /* macros */
 #define DATA f->fs_data
+#define GET_ENTRY_FIELD(DIR, OFFSET, LENGTH) byte_array_to_int(DATA, to_byte_address(DIR->current_cluster, 0, DIR->de_index)+OFFSET, LENGTH)
 // direntries offsets
 #define SFN_OFFSET 0x0
 #define SFN_LENGTH 11
@@ -160,14 +166,15 @@ struct vfat_dir_descr {
 
 
 // Function prototypes
-static int byte_array_to_int(unsigned char *array, int offset, int length);
+static unsigned int byte_array_to_int(unsigned char *array, int offset, int length);
 static int r_read(int fdes,unsigned char *buffer, int offset, int byte_count);
 static unsigned long to_byte_address(int clusters, int sectors, int dir_entries);
 static int find_next_cluster(int current_cluster);
 static unsigned int get_fat_entry(unsigned int fat_index);
-static int increment_dir_descr(struct vfat_dir_descr *dir); // TODO try to decomment this and correct errors
+static int increment_dir_descr(struct vfat_dir_descr *dir);
 static char *read_lfn(struct vfat_dir_descr *dir);
 static void read_dir_entry(struct vfat_dir_descr *dir, struct vfat_direntry *direntry);
+static void interpret_sfn(const char *name, const char *ext, char *buf);
 
 
 struct vfat vfat_info, *f = &vfat_info;
@@ -281,10 +288,7 @@ vfat_init(const char *dev)
 
 }
 
-/* XXX add your code here */
-/*
- *
- */
+/* Personnal code section */
 
 /*
  * Converts an array of bytes to an int.
@@ -293,7 +297,7 @@ vfat_init(const char *dev)
  * offset : the first byte of the array from which to read
  * length : the number of bytes to read from the array
  */
-static int
+static unsigned int
 byte_array_to_int(unsigned char *array, int offset, int length)
 {
 	int result = 0;
@@ -417,10 +421,17 @@ get_fat_entry(unsigned int fat_index)
 	return byte_array_to_int(DATA, f->fat_begin + fat_index, 4);
 }
 
+/*
+ * reads and interprets long file names
+ * dir the dir descr that indicates which dir entry to read
+ * return the long name in utf8 format
+ * see http://man7.org/linux/man-pages/man3/iconv.3.html
+ *
+ * TODO implement read_lfn
+ */
 static char *
 read_lfn(struct vfat_dir_descr *dir)
 {
-	//TODO implement
 
 	//for now, just skip lfn
 	char attrib_byte = DATA[to_byte_address(dir->current_cluster, 0, dir->de_index)+ATTRIB_OFFSET];
@@ -433,37 +444,70 @@ read_lfn(struct vfat_dir_descr *dir)
 static void
 read_dir_entry(struct vfat_dir_descr *dir, struct vfat_direntry *direntry)
 {
-	// TODO Read the dir entry pointed in dir
-	/*
-	Short Filename	0x00	11 Bytes
-	Attrib Byte	0x0B	8 Bits
-	First Cluster High	0x14	16 Bits
-	First Cluster Low	0x1A	16 Bits
-	File Size	0x1C	32 Bits
-	 */
 	int i;
 	// copies sfn into direntry nameext
 	for (i=0; i<11; i++) {
-		direntry->nameext[i] = DATA[SFN_OFFSET+i+to_byte_address(
-				dir->current_cluster,
-				0,
-				dir->de_index)];
+		direntry->nameext[i] = GET_ENTRY_FIELD(dir, SFN_OFFSET, SFN_LENGTH);
 	}
-	direntry->attr = DATA[ATTRIB_OFFSET+to_byte_address(
-			dir->current_cluster,
-			0,
-			dir->de_index)];
-
+	// fills all other fields
+	direntry->attr = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, ATTRIB_LENGTH);
+	direntry->res = GET_ENTRY_FIELD(dir, RES_OFFSET, RES_LENGTH);
+	direntry->ctime_ms = GET_ENTRY_FIELD(dir, CTMS_OFFSET, CTMS_LENGTH);
+	direntry->ctime_time = GET_ENTRY_FIELD(dir, CTT_OFFSET, CTT_LENGTH);
+	direntry->ctime_date = GET_ENTRY_FIELD(dir, CTD_OFFSET, CTD_LENGTH);
+	direntry->atime_date = GET_ENTRY_FIELD(dir, ATD_OFFSET, ATD_LENGTH);
+	direntry->cluster_hi = GET_ENTRY_FIELD(dir, CLUSHI_OFFSET, CLUSHI_LENGTH);
+	direntry->mtime_time = GET_ENTRY_FIELD(dir, MTT_OFFSET, MTT_LENGTH);
+	direntry->mtime_date = GET_ENTRY_FIELD(dir, MTD_OFFSET, MTD_LENGTH);
+	direntry->cluster_lo = GET_ENTRY_FIELD(dir, CLUSLO_OFFSET, CLUSLO_LENGTH);
+	direntry->size = GET_ENTRY_FIELD(dir, SIZE_OFFSET, SIZE_LENGTH);
 }
 
+/*
+ * translates nameext into correct name.ext form
+ * filling spaces are removed.
+ */
+static void
+interpret_sfn(const char *name, const char *ext, char *buf)
+{
+	// skips spaces at the end
+	int name_end = 7;
+	while((name_end >= 0) && (name[name_end]==' ')) name_end--;
+
+	int ext_end = 2;
+	while((ext_end >= 0) && (ext[ext_end]==' ')) ext_end--;
+
+	if (name_end == -1 && ext_end == -1) {
+		buf[0] = '\0';
+		return;
+	}
+	int i;
+	// indexes [0; name_end]
+	for (i=0; i<=name_end; i++) {
+		buf[i] = name[i];
+	}
+
+	// indexes [name_end+1; name_end+1]
+	buf[name_end+1] = '.';
+
+	// indexes [name_end+2; name_end+2+ext_end]
+	for (i=0; i<=ext_end; i++) {
+		buf[name_end+2+i] = ext[i];
+	}
+
+	// indexes [name_end+2+ext_end+1; name_end+2+ext_end+1]
+	buf[name_end+ext_end+3] = '\0';
+}
  /* end of personal methods */
 
 /*
  * Reads one entry of directory and store the stat in fillerdata
  * Returns 1 if a new dir_entry was successfully added, 0 else
+ *
+ * TODO check vfat_readdir
  */
 static int
-vfat_readdir(/* XXX add your code here, */struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdata)
+vfat_readdir(struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdata)
 {
 	if (dir->current_cluster == -1)
 		return 0;
@@ -471,16 +515,10 @@ vfat_readdir(/* XXX add your code here, */struct vfat_dir_descr *dir, fuse_fill_
 	/* this stat structure is used to store the properties of a file or directory
 	 * being read. It has to be passed as an argument to the filler function.
 	 */
-	struct stat st;
 	void *buf = NULL; // we do not have to use this buf variable (according to the forum)
 	struct vfat_direntry e;
 	char *name = NULL;
-
-	memset(&st, 0, sizeof(st));
-	st.st_uid = mount_uid;
-	st.st_gid = mount_gid;
-	st.st_nlink = 1;
-	char attrib_byte = DATA[to_byte_address(dir->current_cluster, 0, dir->de_index)+ATTRIB_OFFSET];
+	uint8_t attrib_byte = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, ATTRIB_LENGTH);
 
 	// check validity
 	if ((attrib_byte&VFAT_ATTR_INVAL) != 0) {
@@ -498,16 +536,60 @@ vfat_readdir(/* XXX add your code here, */struct vfat_dir_descr *dir, fuse_fill_
 	read_dir_entry(dir, &e);
 
 	// store info in st
+
+	struct stat st;
+	memset(&st, 0, sizeof(st));
+	st.st_uid = mount_uid;
+	st.st_gid = mount_gid;
+	st.st_nlink = 1;
+
+	// TODO Check time format
+	// see http://fr.wikipedia.org/wiki/File_Allocation_Table#Root_Directory for e time fields interpretation
+	st.st_size = e.size;
+//	st.st_atim = e.atime_date;
+//	st.st_mtim = e.mtime_date<<MTD_LENGTH*8 + e.mtime_time;
+//	st.st_ctim = e.ctime_date<<CTD_LENGTH*8 + e.ctime_time;
+	st.st_mode = (e.attr & VFAT_ATTR_DIR) ? S_IFDIR : S_IFREG;
+
+
+	// interprets short file name
+	if (name == NULL) {
+		name = malloc(13*sizeof(char));
+		interpret_sfn(e.name, e.ext, name);
+	}
+	// store info in buffer
 	int success = filler(fillerdata, name, &st, 0)==0;
 	// increment dir_descr pointer if data was successfully added to buffer
 	success = success && increment_dir_descr(dir);
 	return (1);
-	/* XXX add your code here */
 }
 /*
  * Takes a vfat_search_data, a name and a stat associated to this name.
  * If the name of search data match to name, then the content of the pointer
  * st in vaft_search_data will be replaced by the given stat.
+ *
+ *
+ * TODO Look here for search_entry hint!!!
+ * How to use :
+ *
+ * this can be seen like a filler function that only fills with entry
+ * that have name corresponding to data->name
+ *
+ * we know the current directory represented by a
+ * struct vfat_dir_descr dir;
+ *
+ * struct vfat_search_data sd;
+ * sd.name = name_we_look_for;
+ * vfat_readdir(&dir, vfat_search_entry, &sd);
+ *
+ * sd.found indicates success of search
+ * sd.st->st_mode indicates if it's a directory or a file
+ * ... DAMM nothing indicates first cluster
+ * maybe...
+ * sd.st->st_ino can be used to store cluster number
+ *
+ * we can construct the new dir_descr and iterate!!
+ *
  */
 static int
 vfat_search_entry(void *data, const char *name, const struct stat *st, off_t offs)
@@ -526,15 +608,19 @@ vfat_search_entry(void *data, const char *name, const struct stat *st, off_t off
 /*
  * The return value of vfat_resolve tells whether the searched path exists in
  * the filesystem or not.
+ *
+ * TODO implement vfat_resolve
  */
 static int
 vfat_resolve(const char *path, struct stat *st)
 {
 	struct vfat_search_data sd;
 	return (1);
-	/* XXX add your code here */
 }
 
+/*
+ * TODO implement vfat_fuse_getattr
+ */
 static int
 vfat_fuse_getattr(const char *path, struct stat *st)
 {
@@ -545,7 +631,6 @@ vfat_fuse_getattr(const char *path, struct stat *st)
 	 */
 
 	printf("vfat_fuse_getattr with path %s\n", path);
-	/* XXX add your code here */
 	return 0;
 }
 
@@ -553,7 +638,6 @@ static int
 vfat_fuse_readdir(const char *path, void *data,
 		  fuse_fill_dir_t filler, off_t offs, struct fuse_file_info *fi)
 {
-	printf("vfat_fuse_readdir with path %s\n", path);
 
 	/*
 	 * Specification:
@@ -592,21 +676,40 @@ vfat_fuse_readdir(const char *path, void *data,
 	 *
 	 */
 
-
-	/* TODO
-	 * Resolve path (create corresponding dir_descr)
-	 * while(
+	/*
+	 * TODO
+	 *
+	 * parse path and recursively resolve path (see search entry comments)
+	 * path parsing should be in function resolve or something like this
+	 *
+	 * fill data using vfat_readdir
+	 *
 	 */
+	struct vfat_dir_descr curr_dir;
+	curr_dir.start_cluster = 0;
+	curr_dir.current_cluster = 0;
+	curr_dir.de_index = 0;
+
+	char *parsed_path = strtok(path, "/");
+
+	while (parsed_path != NULL) {
+
+
+
+		parsed_path = strtok(NULL, "/");
+	}
 
 	return 0;
 }
 
+/*
+ * TODO implement vfat_fuse_read
+ */
 static int
 vfat_fuse_read(const char *path, char *buf, size_t size, off_t offs,
 	       struct fuse_file_info *fi)
 {
 	printf("vfat_fuse_read\n");
-	/* XXX add your code here */
 	return 0;
 }
 
