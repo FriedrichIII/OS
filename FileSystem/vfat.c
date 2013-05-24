@@ -635,6 +635,7 @@ read_dir_entry_lfn(struct vfat_dir_descr *dir, struct vfat_direntry_lfn *direntr
 static int
 vfat_readdir(struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdata)
 {
+	printf("reading dir...\n");
 	if (dir->current_cluster == -1)
 		return 0;
 
@@ -645,18 +646,29 @@ vfat_readdir(struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdat
 	struct vfat_direntry e;
 	char *name = NULL;
 	uint8_t attrib_byte = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, ATTRIB_LENGTH);
+	printf("attrib byte = %x\n", attrib_byte);
+
+
+	// skip lfn
+	while(((attrib_byte&VFAT_ATTR_LFN) != 0)
+			&& (increment_dir_descr(dir)!=0)) {
+		printf("skipping lfn...\n");
+		attrib_byte = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, ATTRIB_LENGTH);
+	}
 
 	// check validity
 	if ((attrib_byte&VFAT_ATTR_INVAL) != 0) {
 		// do nothing and go to next
 		// if we can increment dir, then we try to read the next dir entry, return 0 else.
+		printf("invalid attribute\n");
 		return increment_dir_descr(dir) && vfat_readdir(dir, filler, fillerdata);
 	}
-
+/*
 	// parse long file name
 	if ((attrib_byte&VFAT_ATTR_LFN) == VFAT_ATTR_LFN) {
 		name = read_lfn(dir);
 	}
+*/
 
 	// parse info
 	read_dir_entry(dir, &e);
@@ -682,14 +694,17 @@ vfat_readdir(struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdat
 	if (name == NULL) {
 		name = malloc(13*sizeof(char));
 		interpret_sfn(e.name, e.ext, name);
+		printf("sfn read: %s\n", name);
 	}
 	// store info in buffer
 	int success = filler(fillerdata, name, &st, 0)==0;
 	// Hope this doesn't affect fillerdata content
 	free(name);
 
+	printf("filler function used, success is %d\n", success);
 	// increment dir_descr pointer if data was successfully added to buffer
 	success = success && increment_dir_descr(dir);
+	printf("dir_descr incremented, succes is %d\n", success);
 	return (success);
 }
 /*
@@ -746,6 +761,7 @@ vfat_search_entry(void *data, const char *name, const struct stat *st, off_t off
 static int
 vfat_resolve(const char *path, struct stat *st)
 {
+	printf("resolving path %s:\n", path);
 	struct vfat_search_data sd;
 
 	struct vfat_dir_descr curr_dir;
@@ -773,6 +789,7 @@ vfat_resolve(const char *path, struct stat *st)
 	 * Thus everything is OK
 	 */
 	while (path_entry != NULL) {
+		printf("searching entry of name %s in inode %u\n", path_entry, curr_dir.current_cluster);
 		// set search data we are searching in curr_dir
 		sd.name = path_entry;
 		sd.found = 0;
@@ -828,6 +845,7 @@ static int
 vfat_fuse_readdir(const char *path, void *data,
 		  fuse_fill_dir_t filler, off_t offs, struct fuse_file_info *fi)
 {
+	printf("readdir with path %s\n", path);
 	if (path==NULL || path[0]=='\0')
 		return -ENOENT;
 	/*
@@ -869,6 +887,7 @@ vfat_fuse_readdir(const char *path, void *data,
 
 	// resolve path
 	struct stat search_st;
+	printf("resolving path %s...\n", path);
 	int resolve_error = vfat_resolve(path, &search_st);
 	if (resolve_error!=0)
 		return -resolve_error;
@@ -881,8 +900,9 @@ vfat_fuse_readdir(const char *path, void *data,
 	struct vfat_dir_descr dir_to_read;
 	dir_to_read.start_cluster = search_st.st_ino;
 	reset_dir_descr(&dir_to_read);
+	printf("reading dir with inode %u\n", dir_to_read.current_cluster);
 	while(vfat_readdir(&dir_to_read, filler, data));
-
+	printf("read dir finished\n");
 	return 0;
 }
 
