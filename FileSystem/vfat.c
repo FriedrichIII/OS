@@ -954,6 +954,12 @@ static int
 vfat_fuse_read(const char *path, char *buf, size_t size, off_t offs,
 	       struct fuse_file_info *fi)
 {
+	printf("reading file at path %s...\n", path);
+	struct stat read_st;
+	int resolve_error = vfat_resolve(path, &read_st);
+	if (resolve_error!= 0) return -resolve_error;
+
+
 	printf("vfat_fuse_read\n");
 	return 0;
 }
