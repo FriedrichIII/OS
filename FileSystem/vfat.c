@@ -210,7 +210,8 @@ static void interpret_sfn(const char *name, const char *ext, char *buf);
 static void reset_dir_descr(struct vfat_dir_descr *dir);
 static struct timespec *make_timespec(struct timespec *buff, int date, int time, int ms);
 static void read_dir_entry_lfn(struct vfat_dir_descr *dir, struct vfat_direntry_lfn *direntry_lfn);
-
+void LFNEntriesToFileName(struct vfat_direntry_lfn LFNEntries[], size_t numberOfEntries, char* fileName);
+void uint16ToChars(uint16_t value, char* bytes);
 
 struct vfat vfat_info, *f = &vfat_info;
 iconv_t iconv_utf16;
@@ -464,8 +465,8 @@ get_fat_entry(unsigned int fat_index)
  *
  * TODO implement read_lfn
  */
-static char *
-read_lfn(struct vfat_dir_descr *dir)
+static char*
+read_lfn(struct vfat_dir_descr *dir, char* fileName)
 {
 	char attrib_byte;
 	/*
@@ -478,19 +479,41 @@ read_lfn(struct vfat_dir_descr *dir)
 	 * 255 * 2 bytes = 510 bytes.
 	 * (1021 for the '\0' ending character)
 	 */
-	struct vfat_direntry_lfn lfnEntries[20];
-	char longFileName[511];
+	struct vfat_direntry_lfn LFNEntries[20];
+	unsigned short i = 0;
+	// char longFileName[511];
 	do {
-
-		increment_dir_descr(dir); // retourne 0 si la fin du fichier est atteinte
+		read_dir_entry_lfn(dir, &LFNEntries[i]);
+		if(increment_dir_descr(dir) == 0) {
+			/* Returns 0 if the end of the directory has been reached.
+			 * It should not happen in this loop.
+			 */
+			return fileName;
+		}
 		attrib_byte = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, dir->de_index);
 	} while((attrib_byte & VFAT_ATTR_LFN) == VFAT_ATTR_LFN);
 
-	return NULL;
+
+	LFNEntriesToFileName(LFNEntries, i + 1, fileName);
+	return fileName;
 }
 
-void reorder(struct vfat_direntry_lfn lfnEntries[], filename ) {
+void LFNEntriesToFileName(struct vfat_direntry_lfn LFNEntries[], size_t numberOfEntries, char* fileName) {
+	char bytes[2];
+	unsigned short i;
+	for (i = numberOfEntries - 1 ; i >= 0; --i) {
+		strcpy(fileName, uint16ToChars(LFNEntries[i].name1, bytes));
+		strcpy(fileName, uint16ToChars(LFNEntries[i].name2, bytes));
+		strcpy(fileName, uint16ToChars(LFNEntries[i].name3, bytes));
+	}
+	strcpy(fileName, "\0");
+}
 
+void uint16ToChars(uint16_t value, char* bytes) {
+	char low = value & 0xFF;
+	char high = value >> 8;
+	bytes[0] = high;
+	bytes[1] = low;
 }
 
 static void
