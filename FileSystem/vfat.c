@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 
 
@@ -60,6 +61,21 @@
 #define CLUSLO_LENGTH 2
 #define SIZE_OFFSET 0x1C
 #define SIZE_LENGTH 4
+
+// time mask
+#define SEC_MASK 0x001F
+#define SEC_SHFT 0
+#define MIN_MASK 0x07E0
+#define MIN_SHFT 5
+#define HOU_MASK 0xF800
+#define HOU_SHFT 11
+#define DAY_MASK 0x001F
+#define DAY_SHFT 0
+#define MON_MASK 0x01E0
+#define MON_SHFT 5
+#define YEA_MASK 0xFE00
+#define YEA_SHFT 7
+
 
 
 struct vfat_super {
@@ -177,6 +193,7 @@ static char *read_lfn(struct vfat_dir_descr *dir);
 static void read_dir_entry(struct vfat_dir_descr *dir, struct vfat_direntry *direntry);
 static void interpret_sfn(const char *name, const char *ext, char *buf);
 static void reset_dir_descr(struct vfat_dir_descr *dir);
+static struct timespec *make_timespec(struct timespec *buff, int date, int time, int ms);
 
 
 struct vfat vfat_info, *f = &vfat_info;
@@ -436,7 +453,7 @@ read_lfn(struct vfat_dir_descr *dir)
 {
 
 	//for now, just skip lfn
-	char attrib_byte = DATA[to_byte_address(dir->current_cluster, 0, dir->de_index)+ATTRIB_OFFSET];
+	char attrib_byte = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, ATTRIB_LENGTH);
 	while ((attrib_byte&VFAT_ATTR_LFN) == VFAT_ATTR_LFN) {
 		increment_dir_descr(dir);
 	}
@@ -508,6 +525,24 @@ reset_dir_descr(struct vfat_dir_descr *dir)
 	dir->current_cluster = dir->start_cluster;
 	dir->de_index = 0;
 }
+
+
+static struct timespec *
+make_timespec(struct timespec *buff, int date, int time, int ms)
+{
+	struct tm tm_time;
+	memset(&tm_time, 0, sizeof(tm_time));
+	tm_time.tm_sec = ((time&SEC_MASK)>>SEC_SHFT) * 2 + ms/100;
+	tm_time.tm_min = ((time&MIN_MASK)>>MIN_SHFT);
+	tm_time.tm_hour = ((time&HOU_MASK)>>HOU_SHFT);
+	tm_time.tm_mday = ((date&DAY_MASK)>>DAY_SHFT);
+	tm_time.tm_mon = ((date&MON_MASK)>>MON_SHFT)-1;
+	tm_time.tm_year = ((date&YEA_MASK)>>YEA_SHFT) + 1980 - 1900;
+
+	buff->tv_sec = mktime(&tm_time);
+	buff->tv_nsec = (ms%100)*10*1000*1000;
+	return buff;
+}
  /* end of personal methods */
 
 /*
@@ -555,11 +590,18 @@ vfat_readdir(struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdat
 
 	// TODO Check time format
 	// see http://fr.wikipedia.org/wiki/File_Allocation_Table#Root_Directory for e time fields interpretation
+	/*
+	struct timespec
+	  {
+	    __time_t tv_sec;		// Seconds.
+	    long int tv_nsec;		// Nanoseconds.
+	  };
+	*/
 	st.st_size = e.size;
-	struct timespec test;
-	st.st_atim = test;//e.atime_date;
-//	st.st_mtim = e.mtime_date<<MTD_LENGTH*8 + e.mtime_time;
-//	st.st_ctim = e.ctime_date<<CTD_LENGTH*8 + e.ctime_time;
+
+	make_timespec(&st.st_atim, e.atime_date, 0, 0);
+	make_timespec(&st.st_mtim, e.mtime_date, e.mtime_time, 0);
+	make_timespec(&st.st_ctim, e.ctime_date, e.ctime_time, e.ctime_time);
 	st.st_mode = (e.attr & VFAT_ATTR_DIR) ? S_IFDIR : S_IFREG;
 	st.st_ino = (e.cluster_hi<<(CLUSHI_LENGTH*8)) + e.cluster_lo;
 
@@ -685,6 +727,7 @@ vfat_resolve(const char *path, struct stat *st)
 
 /*
  * TODO implement vfat_fuse_getattr
+ *
  */
 static int
 vfat_fuse_getattr(const char *path, struct stat *st)
