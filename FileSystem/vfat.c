@@ -76,7 +76,7 @@
 #define MON_MASK 0x01E0
 #define MON_SHFT 5
 #define YEA_MASK 0xFE00
-#define YEA_SHFT 7
+#define YEA_SHFT 9
 
 // lfn_direntries offset
 #define SEQ_OFFSET 0x0
