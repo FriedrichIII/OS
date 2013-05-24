@@ -457,21 +457,25 @@ read_lfn(struct vfat_dir_descr *dir)
 	 * 255 UTF-16 characters. A code unit in UTF-16 is
 	 * 16 bits. Every char is represented with
 	 * one code unit (most of the time), or two (32 bits).
+	 * However here it can never be two.
 	 * Therefore the max. filename length cannot exceed
-	 * 255 * 4 bytes = 1020 bytes.
+	 * 255 * 2 bytes = 510 bytes.
 	 * (1021 for the '\0' ending character)
 	 */
-	char longFileName[1021];
+	struct vfat_direntry_lfn lfnEntries[20];
+	char longFileName[511];
 	do {
 
-		increment_dir_descr(dir);
+		increment_dir_descr(dir); // retourne 0 si la fin du fichier est atteinte
 		attrib_byte = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, dir->de_index);
 	} while((attrib_byte & VFAT_ATTR_LFN) == VFAT_ATTR_LFN);
 
 	return NULL;
 }
 
+void reorder(struct vfat_direntry_lfn lfnEntries[], filename ) {
 
+}
 
 static void
 read_dir_entry(struct vfat_dir_descr *dir, struct vfat_direntry *direntry)
