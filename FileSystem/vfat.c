@@ -549,6 +549,7 @@ interpret_sfn(const char *name, const char *ext, char *buf)
 
 	// indexes [name_end+2+ext_end+1; name_end+2+ext_end+1]
 	buf[name_end+ext_end+3] = '\0';
+	printf("");
 }
 
 // set dir to point on it's first entry, according to start_cluster field
@@ -623,7 +624,7 @@ vfat_readdir(struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdat
 
 
 	// skip lfn
-	while(((attrib_byte&VFAT_ATTR_LFN) != 0)
+	while(((attrib_byte&VFAT_ATTR_LFN) == VFAT_ATTR_LFN)
 			&& (increment_dir_descr(dir)!=0)) {
 		printf("skipping lfn...\n");
 		attrib_byte = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, ATTRIB_LENGTH);
@@ -674,7 +675,7 @@ vfat_readdir(struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdat
 	// Hope this doesn't affect fillerdata content
 	free(name);
 
-	printf("filler function used, success is %d\n", success);
+	printf("filler function used, success is %d (unfilled buffer)\n", success);
 	// increment dir_descr pointer if data was successfully added to buffer
 	success = success && increment_dir_descr(dir);
 	printf("dir_descr incremented, succes is %d\n", success);
@@ -761,8 +762,9 @@ vfat_resolve(const char *path, struct stat *st)
 	 *
 	 * Thus everything is OK
 	 */
+	printf("Before resolving path, path_entry is %s\n", path_entry);
 	while (path_entry != NULL) {
-		printf("searching entry of name %s in inode %u\n", path_entry, curr_dir.current_cluster);
+		printf("searching entry of name %s in inode %u\n", path_entry, st->st_ino);
 		// set search data we are searching in curr_dir
 		sd.name = path_entry;
 		sd.found = 0;
@@ -807,7 +809,7 @@ vfat_fuse_getattr(const char *path, struct stat *st)
 	 * - looks for all dir entry in dir
 	 * - stat is filled with corresponding direntry.
 	 */
-//	printf("vfat_fuse_getattr with path %s\n", path);
+	printf("vfat_fuse_getattr with path %s\n", path);
 	return -vfat_resolve(path, st);
 }
 
