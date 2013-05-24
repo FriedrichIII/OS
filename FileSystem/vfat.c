@@ -819,7 +819,7 @@ vfat_resolve(const char *path, struct stat *st)
 	st->st_mode = S_IFDIR;
 
 	// creates a copy of path to use strtok
-	char *path_copy = malloc(strlen(path)*sizeof(char)+1);
+	char *path_copy = malloc((strlen(path)+1)*sizeof(char));
 	path_copy = strncpy(path_copy, path, sizeof(path));
 	path_copy[sizeof(path)] = '\0';
 
