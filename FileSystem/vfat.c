@@ -175,6 +175,7 @@ static int increment_dir_descr(struct vfat_dir_descr *dir);
 static char *read_lfn(struct vfat_dir_descr *dir);
 static void read_dir_entry(struct vfat_dir_descr *dir, struct vfat_direntry *direntry);
 static void interpret_sfn(const char *name, const char *ext, char *buf);
+static void reset_dir_descr(struct vfat_dir_descr *dir);
 
 
 struct vfat vfat_info, *f = &vfat_info;
@@ -498,11 +499,19 @@ interpret_sfn(const char *name, const char *ext, char *buf)
 	// indexes [name_end+2+ext_end+1; name_end+2+ext_end+1]
 	buf[name_end+ext_end+3] = '\0';
 }
+
+// set dir to point on it's first entry, according to start_cluster field
+static void
+reset_dir_descr(struct vfat_dir_descr *dir)
+{
+	dir->current_cluster = dir->start_cluster;
+	dir->de_index = 0;
+}
  /* end of personal methods */
 
 /*
  * Reads one entry of directory and store the stat in fillerdata
- * Returns 1 if a new dir_entry was successfully added, 0 else
+ * Returns 0 when fillerdata is full or when end of dir is reached
  *
  * TODO check vfat_readdir
  */
@@ -546,10 +555,12 @@ vfat_readdir(struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdat
 	// TODO Check time format
 	// see http://fr.wikipedia.org/wiki/File_Allocation_Table#Root_Directory for e time fields interpretation
 	st.st_size = e.size;
-//	st.st_atim = e.atime_date;
+	struct timespec test;
+	st.st_atim = test;//e.atime_date;
 //	st.st_mtim = e.mtime_date<<MTD_LENGTH*8 + e.mtime_time;
 //	st.st_ctim = e.ctime_date<<CTD_LENGTH*8 + e.ctime_time;
 	st.st_mode = (e.attr & VFAT_ATTR_DIR) ? S_IFDIR : S_IFREG;
+	st.st_ino = e.cluster_hi<<(CLUSHI_LENGTH*8)+e.cluster_lo;
 
 
 	// interprets short file name
@@ -559,9 +570,12 @@ vfat_readdir(struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdat
 	}
 	// store info in buffer
 	int success = filler(fillerdata, name, &st, 0)==0;
+	// Hope this doesn't affect fillerdata content
+	free(name);
+
 	// increment dir_descr pointer if data was successfully added to buffer
 	success = success && increment_dir_descr(dir);
-	return (1);
+	return (success);
 }
 /*
  * Takes a vfat_search_data, a name and a stat associated to this name.
@@ -609,13 +623,54 @@ vfat_search_entry(void *data, const char *name, const struct stat *st, off_t off
  * The return value of vfat_resolve tells whether the searched path exists in
  * the filesystem or not.
  *
- * TODO implement vfat_resolve
+ * path the path to be resolved
+ * st file/dir datas that will contain found data. Unspecified when return 0
+ * return 1 if data was found
+ *
  */
 static int
 vfat_resolve(const char *path, struct stat *st)
 {
 	struct vfat_search_data sd;
-	return (1);
+
+	struct vfat_dir_descr curr_dir;
+	curr_dir.start_cluster = 0;
+	curr_dir.current_cluster = 0;
+	curr_dir.de_index = 0;
+
+	char *parsed_path = strtok(path, "/");
+
+	while (parsed_path != NULL) {
+		// set search data we are searching in curr_dir
+		sd.name = parsed_path;
+		sd.found = 0;
+		// reset st fields
+		memset(st, 0, sizeof(*st));
+		sd.st = st;
+
+		// search parsed_path entry in curr_dir
+		// sd.found updated
+		// corresponding stat stored in sd.st
+		vfat_readdir(&curr_dir, vfat_search_entry, &sd);
+
+		// go to next level of path
+		parsed_path = strtok(NULL, "/");
+
+		// fail if path not found or entry found is not dir and end of path not reached
+		if (!sd.found
+				|| (parsed_path!=NULL && !S_ISDIR(sd.st->st_mode))) {
+			return 0;
+		}
+
+		if (parsed_path!=NULL) {
+			// update curr_dir to next found dir
+			// start cluster of data = fat entry index - 2
+			curr_dir.start_cluster = sd.st->st_ino - 2;
+			reset_dir_descr(&curr_dir);
+		}
+	}
+
+	return 1;
 }
 
 /*
@@ -685,19 +740,6 @@ vfat_fuse_readdir(const char *path, void *data,
 	 * fill data using vfat_readdir
 	 *
 	 */
-	struct vfat_dir_descr curr_dir;
-	curr_dir.start_cluster = 0;
-	curr_dir.current_cluster = 0;
-	curr_dir.de_index = 0;
-
-	char *parsed_path = strtok(path, "/");
-
-	while (parsed_path != NULL) {
-
-
-
-		parsed_path = strtok(NULL, "/");
-	}
 
 	return 0;
 }
