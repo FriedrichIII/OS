@@ -687,17 +687,27 @@ vfat_readdir(struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdat
 	 */
 //	void *buf = NULL; // we do not have to use this buf variable (according to the forum)
 	struct vfat_direntry e;
-	char *name = NULL;
+	char name[511];
+	int is_sfn = 1;
 	unsigned char attrib_byte = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, ATTRIB_LENGTH);
 	printf("attrib byte = %x\n", attrib_byte);
 
-
+/*
 	// skip lfn
 	while(((attrib_byte&VFAT_ATTR_LFN) == VFAT_ATTR_LFN)
 			&& (increment_dir_descr(dir)!=0)) {
 		printf("skipping lfn...\n");
 		attrib_byte = GET_ENTRY_FIELD(dir, ATTRIB_OFFSET, ATTRIB_LENGTH);
 	}
+*/
+
+		// parse long file name
+	if ((attrib_byte&VFAT_ATTR_LFN) == VFAT_ATTR_LFN) {
+		is_sfn = 0;
+		printf("READ LFN CALLED\n");
+		read_lfn(dir, name);
+	}
+
 
 	// check validity
 	if ((attrib_byte&VFAT_ATTR_INVAL) != 0) {
@@ -706,12 +716,6 @@ vfat_readdir(struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdat
 		printf("invalid attribute\n");
 		return increment_dir_descr(dir) && vfat_readdir(dir, filler, fillerdata);
 	}
-/*
-	// parse long file name
-	if ((attrib_byte&VFAT_ATTR_LFN) == VFAT_ATTR_LFN) {
-		name = read_lfn(dir);
-	}
-*/
 
 	// parse info
 	read_dir_entry(dir, &e);
@@ -734,15 +738,13 @@ vfat_readdir(struct vfat_dir_descr *dir, fuse_fill_dir_t filler, void *fillerdat
 
 
 	// interprets short file name
-	if (name == NULL) {
-		name = malloc(13*sizeof(char));
+	if (is_sfn) {
 		interpret_sfn(e.name, e.ext, name);
 		printf("sfn read: %s\n", name);
 	}
 	// store info in buffer
 	int success = filler(fillerdata, name, &st, 0)==0;
 	// Hope this doesn't affect fillerdata content
-	free(name);
 
 	printf("filler function used, success is %d (unfilled buffer)\n", success);
 	// increment dir_descr pointer if data was successfully added to buffer
