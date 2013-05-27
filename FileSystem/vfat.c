@@ -1009,6 +1009,7 @@ vfat_fuse_read(const char *path, char *buf, size_t size, off_t offs,
 		while(bytesCopied<size){
 			strncpy(buf+bytesCopied, Address, size-bytesCopied-finalOffs);
 			finalOffs = 0;
+			bytesCopied == finalOffs
 		}
 
 	}
